@@ -2,6 +2,10 @@
   "name": "@kito/admin",
   "version": "0.0.0",
   "private": true,
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=22.11.0 <23"
+  },
   "scripts": {
     "dev": "next dev --port 3300",
     "build": "next build",
@@ -15,5 +19,9 @@
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
   }
 }
