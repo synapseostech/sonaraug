@@ -1,0 +1,39 @@
+{
+  "name": "@kito/web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3100 --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "next start --port 3100 --hostname 127.0.0.1",
+    "lint": "next lint",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "sonara:dev": "node --experimental-strip-types --no-warnings scripts/sonara-dev.ts"
+  },
+  "dependencies": {
+    "@kito/analytics": "workspace:*",
+    "@kito/auth": "workspace:*",
+    "@kito/billing": "workspace:*",
+    "@kito/chronicles": "workspace:*",
+    "@kito/config": "workspace:*",
+    "@kito/media": "workspace:*",
+    "@kito/studio": "workspace:*",
+    "@kito/types": "workspace:*",
+    "@kito/ui": "workspace:*",
+    "@kito/validation": "workspace:*",
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.119.0",
+    "next": "^15.1.0",
+    "nodemailer": "10.4.0",
+    "pg": "8.23.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "8.0.2",
+    "@types/pg": "8.23.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
+  }
+}

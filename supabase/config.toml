@@ -1,0 +1,119 @@
+# =============================================================================
+# Supabase CLI configuration — LOCAL DEVELOPMENT STACK ONLY
+# =============================================================================
+# Used by `supabase start` / `supabase db reset` on a developer machine. The
+# hosted Sonara project is configured in the Supabase dashboard (see
+# docs/SONARA_SUPABASE_SETUP.md); nothing here is pushed to it automatically.
+#
+# Ports use a dedicated 554xx range so this stack never collides with another
+# local Supabase project (e.g. an unrelated project on the default 543xx ports).
+# Services Sonara does not use are disabled to keep the stack small.
+# =============================================================================
+project_id = "sonara-local"
+
+[api]
+enabled = true
+port = 55421
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+# Mirror the hosted default (true) so tests prove our migrations revoke and
+# re-grant explicitly instead of relying on platform defaults.
+auto_expose_new_tables = true
+
+[db]
+port = 55422
+shadow_port = 55420
+major_version = 17
+
+[db.pooler]
+enabled = false
+port = 55429
+
+[db.migrations]
+enabled = true
+
+[db.seed]
+# Local-only seed: development placeholder plans. Never run against the hosted project.
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[realtime]
+enabled = false
+
+[studio]
+enabled = false
+port = 55423
+
+# Local mail catcher (Mailpit). Every auth email sent by the local stack lands here.
+[local_smtp]
+enabled = true
+port = 55424
+smtp_port = 55425
+pop3_port = 55426
+
+[storage]
+enabled = false
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3100"
+# Exact URLs allowed as emailRedirectTo / redirectTo. 3110 is the local production-build test port.
+additional_redirect_urls = [
+  "http://127.0.0.1:3100/auth/verify-email",
+  "http://127.0.0.1:3100/auth/reset-password",
+  "http://127.0.0.1:3110/auth/verify-email",
+  "http://127.0.0.1:3110/auth/reset-password",
+]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+minimum_password_length = 10
+password_requirements = ""
+
+[auth.rate_limit]
+email_sent = 30
+sign_in_sign_ups = 60
+token_refresh = 150
+token_verifications = 60
+
+[auth.email]
+enabled = true
+double_confirm_changes = true
+# Users must confirm their email before they can sign in.
+enable_confirmations = true
+secure_password_change = false
+max_frequency = "1s"
+otp_length = 6
+otp_expiry = 3600
+
+# Links carry token_hash to Sonara's own pages, which ask the user to press a
+# button before verifying, so email scanners cannot consume them.
+[auth.email.template.confirmation]
+subject = "Confirm your Sonara account"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Sonara password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your new Sonara email address"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.email.notification.password_changed]
+enabled = true
+subject = "Your Sonara password was changed"
+content_path = "./supabase/templates/password_changed.html"
+
+[auth.sms]
+enabled = false
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false

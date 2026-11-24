@@ -1,0 +1,19 @@
+{
+  "name": "@kito/studio",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3200",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@kito/auth": "workspace:*",
+    "@kito/config": "workspace:*",
+    "@kito/types": "workspace:*",
+    "@kito/validation": "workspace:*",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

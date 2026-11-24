@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@kito/config": ["packages/config/src/index.ts"],
+      "@kito/types": ["packages/types/src/index.ts"],
+      "@kito/validation": ["packages/validation/src/index.ts"],
+      "@kito/media": ["packages/media/src/index.ts"],
+      "@kito/studio": ["packages/studio/src/index.ts"],
+      "@kito/analytics": ["packages/analytics/src/index.ts"],
+      "@kito/auth": ["packages/auth/src/index.ts"],
+      "@kito/chronicles": ["packages/chronicles/src/index.ts"],
+      "@kito/billing": ["packages/billing/src/index.ts"],
+      "@kito/billing/flutterwave": ["packages/billing/src/flutterwave.ts"]
+    }
+  },
+  "include": ["packages/*/src/**/*.ts", "workers/*/src/**/*.ts"],
+  "exclude": ["node_modules", "**/node_modules", ".tmp", "packages/ui"]
+}

@@ -1,0 +1,45 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+.next/
+.next-*/
+out/
+dist/
+build/
+*.tsbuildinfo
+.turbo/
+
+# env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# local test database (throwaway Postgres cluster)
+.tmp/
+
+# logs & coverage
+*.log
+coverage/
+playwright-report/
+test-results/
+
+# native / mobile
+.expo/
+ios/
+android/
+*.jks
+*.keystore
+*.mobileprovision
+
+# editors & OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# local development data (dev store, uploaded media, outbox) — never commit
+.data/

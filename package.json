@@ -1,0 +1,25 @@
+{
+  "name": "kito-media-platform",
+  "private": true,
+  "description": "Uganda-focused digital media platform: live radio, podcasts and video.",
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=22.11.0 <23"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter @kito/ui --filter @kito/web run typecheck",
+    "test": "node --test --experimental-strip-types \"packages/*/src/*.test.ts\" \"apps/web/lib/**/*.test.ts\" \"scripts/*.test.mjs\"",
+    "test:db": "bash supabase/tests/run-tests.sh",
+    "verify": "pnpm run typecheck && pnpm run test && pnpm run test:db",
+    "test:e2e": "node scripts/sonara-e2e.mjs",
+    "sonara:dev": "pnpm --filter @kito/web sonara:dev"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "turbo": "^2.3.3",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,457 @@
+/* ==========================================================================
+   @kito/ui — component styles
+   Colour values come from CSS custom properties written by cssVariables(),
+   which reads packages/config/src/design-tokens.ts. Never hardcode a colour
+   here: the product has two themes and one source of truth.
+   ========================================================================== */
+
+/* Buttons ----------------------------------------------------------------- */
+.kt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: transform 120ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  white-space: nowrap;
+}
+
+.kt-btn:active {
+  transform: scale(0.98);
+}
+
+.kt-btn:focus-visible {
+  outline: 2px solid var(--kt-accent, #f5a524);
+  outline-offset: 2px;
+}
+
+.kt-btn--primary {
+  background: var(--kt-accent, #f5a524);
+  color: var(--kt-on-accent, #1a1206);
+}
+
+.kt-btn--primary:hover {
+  filter: brightness(1.06);
+}
+
+.kt-btn--secondary {
+  background: var(--kt-raised, #262629);
+  color: var(--kt-text, #f7f5f2);
+  border-color: var(--kt-border, #333336);
+}
+
+.kt-btn--secondary:hover {
+  background: #303034;
+  border-color: #45454a;
+}
+
+.kt-btn--ghost {
+  background: transparent;
+  color: var(--kt-muted, #a8a5a0);
+  border-color: transparent;
+  padding-inline: 10px;
+}
+
+.kt-btn--ghost:hover {
+  color: var(--kt-text, #f7f5f2);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.kt-btn--sm {
+  min-height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.kt-btn--block {
+  width: 100%;
+}
+
+.kt-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kt-btn__icon {
+  display: inline-flex;
+}
+
+/* Icon buttons ------------------------------------------------------------ */
+.kt-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--kt-muted, #a8a5a0);
+  cursor: pointer;
+  transition: color 140ms ease, background-color 140ms ease, transform 120ms ease;
+}
+
+.kt-iconbtn:hover {
+  color: var(--kt-text, #f7f5f2);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.kt-iconbtn:focus-visible {
+  outline: 2px solid var(--kt-accent, #f5a524);
+  outline-offset: 2px;
+}
+
+.kt-iconbtn:active {
+  transform: scale(0.94);
+}
+
+.kt-iconbtn--sm {
+  width: 32px;
+  height: 32px;
+}
+
+.kt-iconbtn--lg {
+  width: 48px;
+  height: 48px;
+}
+
+.kt-iconbtn--accent {
+  background: var(--kt-accent, #f5a524);
+  color: var(--kt-on-accent, #1a1206);
+}
+
+.kt-iconbtn--accent:hover {
+  background: var(--kt-accent, #f5a524);
+  color: var(--kt-on-accent, #1a1206);
+  filter: brightness(1.06);
+}
+
+.kt-iconbtn--inverse {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--kt-text, #f7f5f2);
+  backdrop-filter: blur(6px);
+}
+
+.kt-iconbtn[aria-pressed="true"] {
+  color: var(--kt-accent, #f5a524);
+}
+
+.kt-iconbtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Badges ------------------------------------------------------------------ */
+.kt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--kt-muted, #a8a5a0);
+}
+
+.kt-badge--live {
+  background: rgba(255, 77, 77, 0.16);
+  color: #ff8080;
+}
+
+.kt-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #ff4d4d;
+  box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.6);
+  animation: kt-pulse 2s infinite;
+}
+
+.kt-badge--demo {
+  background: rgba(245, 165, 36, 0.14);
+  color: var(--kt-accent, #f5a524);
+}
+
+.kt-badge--accent {
+  background: var(--kt-accent, #f5a524);
+  color: var(--kt-on-accent, #1a1206);
+}
+
+@keyframes kt-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.55); }
+  70% { box-shadow: 0 0 0 6px rgba(255, 77, 77, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
+}
+
+/* Chips ------------------------------------------------------------------- */
+.kt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--kt-border, #333336);
+  background: transparent;
+  color: var(--kt-muted, #a8a5a0);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 140ms ease;
+  white-space: nowrap;
+}
+
+.kt-chip:hover {
+  color: var(--kt-text, #f7f5f2);
+  border-color: #4a4a50;
+}
+
+.kt-chip--active {
+  background: var(--kt-text, #f7f5f2);
+  border-color: var(--kt-text, #f7f5f2);
+  color: #121212;
+  font-weight: 600;
+}
+
+.kt-chip:focus-visible {
+  outline: 2px solid var(--kt-accent, #f5a524);
+  outline-offset: 2px;
+}
+
+/* Artwork ----------------------------------------------------------------- */
+.kt-artwork {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  isolation: isolate;
+}
+
+.kt-artwork::after {
+  /* A faint sheen keeps flat generated artwork from looking like a solid block. */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.12), transparent 45%);
+  pointer-events: none;
+}
+
+.kt-artwork--wide {
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+}
+
+.kt-artwork--round {
+  border-radius: 999px;
+}
+
+.kt-artwork__initials {
+  font-size: clamp(14px, 22cqw, 34px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* Section headers --------------------------------------------------------- */
+.kt-section {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 14px;
+}
+
+.kt-section__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--kt-text, #f7f5f2);
+}
+
+.kt-section__subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--kt-muted, #a8a5a0);
+}
+
+.kt-section__link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--kt-muted, #a8a5a0);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.kt-section__link:hover {
+  color: var(--kt-text, #f7f5f2);
+  text-decoration: underline;
+}
+
+/* Horizontal scroller ----------------------------------------------------- */
+.kt-scroller {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(150px, 168px);
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a3e transparent;
+}
+
+.kt-scroller > * {
+  scroll-snap-align: start;
+}
+
+.kt-scroller::-webkit-scrollbar {
+  height: 8px;
+}
+
+.kt-scroller::-webkit-scrollbar-thumb {
+  background: #3a3a3e;
+  border-radius: 999px;
+}
+
+/* Skeleton ---------------------------------------------------------------- */
+.kt-skeleton {
+  background: linear-gradient(90deg, #232326 25%, #2c2c30 37%, #232326 63%);
+  background-size: 400% 100%;
+  animation: kt-shimmer 1.4s ease infinite;
+}
+
+@keyframes kt-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* Empty state ------------------------------------------------------------- */
+.kt-empty {
+  border: 1px dashed var(--kt-border, #333336);
+  border-radius: 16px;
+  padding: 28px 24px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.kt-empty__title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--kt-text, #f7f5f2);
+}
+
+.kt-empty__body {
+  margin: 0 auto 16px;
+  max-width: 44ch;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--kt-muted, #a8a5a0);
+}
+
+/* Progress ---------------------------------------------------------------- */
+.kt-progress {
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.kt-progress__fill {
+  height: 100%;
+  background: var(--kt-text, #f7f5f2);
+  transition: width 240ms linear;
+}
+
+/* Range input ------------------------------------------------------------- */
+.kt-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 16px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.kt-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--kt-text, #f7f5f2) 0%,
+    var(--kt-text, #f7f5f2) var(--kt-fill, 0%),
+    rgba(255, 255, 255, 0.18) var(--kt-fill, 0%),
+    rgba(255, 255, 255, 0.18) 100%
+  );
+}
+
+.kt-range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.kt-range::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--kt-text, #f7f5f2);
+}
+
+.kt-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 999px;
+  background: var(--kt-text, #f7f5f2);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.kt-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--kt-text, #f7f5f2);
+  opacity: 0;
+}
+
+.kt-range:hover::-webkit-slider-thumb,
+.kt-range:focus-visible::-webkit-slider-thumb,
+.kt-range:hover::-moz-range-thumb,
+.kt-range:focus-visible::-moz-range-thumb {
+  opacity: 1;
+}
+
+.kt-range:focus-visible {
+  outline: 2px solid var(--kt-accent, #f5a524);
+  outline-offset: 4px;
+  border-radius: 999px;
+}
+
+.kt-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}

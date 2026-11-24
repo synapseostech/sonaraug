@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Kito",
+    "slug": "kito",
+    "scheme": "kito",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "invalid.kito.placeholder",
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"],
+        "NSMicrophoneUsageDescription": "Not used for listening."
+      }
+    },
+    "android": {
+      "package": "invalid.kito.placeholder",
+      "permissions": ["FOREGROUND_SERVICE", "FOREGROUND_SERVICE_MEDIA_PLAYBACK", "INTERNET"]
+    },
+    "plugins": ["expo-router"],
+    "extra": {
+      "note": "Bundle identifiers are placeholders and must be replaced before any store submission."
+    }
+  }
+}

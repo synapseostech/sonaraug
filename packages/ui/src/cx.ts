@@ -1,0 +1,6 @@
+/** Joins conditional class names without a dependency. */
+export type ClassValue = string | false | null | undefined;
+
+export function cx(...values: ClassValue[]): string {
+  return values.filter((value): value is string => Boolean(value)).join(" ");
+}

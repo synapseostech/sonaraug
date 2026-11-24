@@ -1,0 +1,9 @@
+{
+  "name": "@kito/validation",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "zod": "^3.23.8" },
+  "scripts": { "test": "node --test --experimental-strip-types src/*.test.ts" }
+}
