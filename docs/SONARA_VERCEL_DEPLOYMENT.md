@@ -14,14 +14,17 @@
 | Setting | Value |
 |---|---|
 | Framework preset | Next.js |
-| Root Directory | repository root |
-| Install command | `corepack enable && corepack pnpm install --frozen-lockfile` |
-| Build command | `corepack pnpm --filter @kito/web build` |
-| Development command | `corepack pnpm --filter @kito/web dev` |
-| Output directory | `.next` (Next.js-managed) |
+| Root Directory | `apps/web` |
+| Include files outside Root Directory | Enabled (workspace packages are in `packages/*`) |
+| Install command | Auto-detected pnpm workspace install; if overriding, `pnpm install --frozen-lockfile` |
+| Build command | `pnpm run build` |
+| Development command | `pnpm run dev` |
+| Output directory | Next.js default (`.next`) |
 | Node.js version | 22.x |
 | Production branch | `main` |
 | Preview deployments | enabled only after required Preview variables are supplied |
+
+Vercel should import `apps/web` as a single Next.js project, not group the repository root as “Services.” Enable access to files outside the Root Directory so pnpm can resolve `@kito/*` workspace packages. Do not import `apps/admin` or `apps/studio` as the public Sonara app.
 
 Do not set `SONARA_ALLOW_DEV_BACKEND=1`, `SONARA_BACKEND=dev`, or `SONARA_DATA_DIR` on Vercel. Do not add `vercel.json` unless native Next.js detection proves insufficient.
 
