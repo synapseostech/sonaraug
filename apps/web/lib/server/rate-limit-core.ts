@@ -20,6 +20,8 @@ export const LIMITS = {
   checkoutPerUser: { name: "checkout:user", max: 10, windowSeconds: 600 },
   uploadPerUser: { name: "upload:user", max: 30, windowSeconds: 3600 },
   playbackPerIp: { name: "playback:ip", max: 240, windowSeconds: 60 },
+  /** AI tutor calls cost money per token: generous for studying, closed to scripted abuse. */
+  tutorPerUser: { name: "tutor:user", max: 60, windowSeconds: 3600 },
 } satisfies Record<string, Bucket>;
 
 export type MemoryStore = Map<string, { start: number; hits: number }>;

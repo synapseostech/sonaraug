@@ -21,6 +21,7 @@ export type SupabaseSettings = {
   publishableKey: string;
   secretKey: string;
   databaseUrl: string;
+  databaseCa: string | null;
   /** Postgres TLS: "require" for hosted projects; "disable" only for a localhost stack. */
   databaseSsl: "require" | "disable";
 };
@@ -39,6 +40,14 @@ export class BackendConfigError extends Error {
 type Env = Record<string, string | undefined>;
 
 const isLocalHost = (host: string) => host === "127.0.0.1" || host === "localhost" || host === "::1";
+
+export function stripPostgresTlsParameters(connectionString: string): string {
+  const url = new URL(connectionString);
+  for (const key of ["sslmode", "sslrootcert", "sslcert", "sslkey", "sslpassword"]) {
+    url.searchParams.delete(key);
+  }
+  return url.toString();
+}
 
 export function resolveBackendConfig(env: Env): BackendConfig {
   const production = env.NODE_ENV === "production";
@@ -60,6 +69,10 @@ export function resolveBackendConfig(env: Env): BackendConfig {
   const publishableKey = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ?? "";
   const secretKey = env.SUPABASE_SECRET_KEY?.trim() ?? "";
   const databaseUrl = env.SUPABASE_DB_URL?.trim() ?? "";
+  const caInput = env.SUPABASE_DB_CA_CERT?.trim() ?? "";
+  const caBlocks = caInput.replace(/\\n/g, "\n").match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
+  const databaseCa = caBlocks.length ? caBlocks.join("\n") : null;
+  if (caInput && !databaseCa) problems.push("SUPABASE_DB_CA_CERT must contain a PEM-encoded certificate");
 
   let parsedUrl: URL | null = null;
   try {
@@ -89,7 +102,7 @@ export function resolveBackendConfig(env: Env): BackendConfig {
   if (production && local && env.SONARA_ALLOW_DEV_BACKEND !== "1") {
     throw new BackendConfigError(["SUPABASE_DB_URL points at localhost in production"]);
   }
-  return { kind: "supabase", supabase: { url, publishableKey, secretKey, databaseUrl, databaseSsl: local ? "disable" : "require" } };
+  return { kind: "supabase", supabase: { url, publishableKey, secretKey, databaseUrl, databaseCa, databaseSsl: local ? "disable" : "require" } };
 }
 
 let cached: BackendConfig | null = null;

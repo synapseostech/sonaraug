@@ -11,12 +11,13 @@ SONARA_BACKEND=supabase
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
 SUPABASE_SECRET_KEY=<secret-key>
-SUPABASE_DB_URL=postgresql://...@<host>:5432/postgres
+SUPABASE_DB_URL=postgresql://...@<transaction-pooler-host>:6543/postgres
+SUPABASE_DB_CA_CERT=<PEM certificate from Database Settings → SSL Configuration>
 SONARA_APP_URL=https://<approved-domain>
 SONARA_TRUST_PROXY=1
 ```
 
-Keep every `SUPABASE_*`, database URL and secret server-only. Never place the secret key in a `NEXT_PUBLIC_*` variable.
+Use the transaction pooler for Vercel. Keep every `SUPABASE_*` database setting server-only. The CA certificate is public, but must remain server configuration; never place the secret key or database URL in a `NEXT_PUBLIC_*` variable.
 
 ## Migration execution (later, with approval)
 

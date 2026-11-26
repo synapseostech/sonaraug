@@ -39,7 +39,8 @@ SONARA_APP_URL=https://<preview-or-production-domain>
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<browser publishable key>
 SUPABASE_SECRET_KEY=<server secret key>
-SUPABASE_DB_URL=postgresql://...<session-pooler-host>.../postgres
+SUPABASE_DB_URL=postgresql://...<transaction-pooler-host>:6543/postgres
+SUPABASE_DB_CA_CERT=<PEM certificate from Supabase Database Settings → SSL Configuration>
 ```
 
 Because pages are statically or dynamically prerendered, these values must be available in Vercel **before the build**, not only during a later function invocation.

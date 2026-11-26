@@ -7,8 +7,8 @@
  * rejected, not "tried".
  *
  * NotebookLM: Sonara stores the share link and sends the listener to it. There
- * is no documented NotebookLM embed or playback API, so we never iframe it,
- * never scrape it and never claim to control its playback.
+ * is no documented NotebookLM embed, playback, or transcription API, so we
+ * never iframe it, scrape it, or claim to control its playback.
  */
 
 export type SourceKind = "notebooklm_link" | "uploaded_audio" | "authorised_url";
@@ -36,7 +36,7 @@ export const SOURCE_PROVIDERS: Readonly<Record<SourceKind, ProviderDescriptor>> 
     control: "provider",
     embeddable: false,
     reportsProgress: false,
-    note: "Plays on NotebookLM, under Google's sharing settings. Sonara links out and cannot track progress.",
+    note: "Opens on NotebookLM under Google's access settings. Sonara cannot read or transcribe share links, or track playback.",
   },
   uploaded_audio: {
     kind: "uploaded_audio",
@@ -94,6 +94,7 @@ const MESSAGES: Record<SourceError, string> = {
 const fail = (error: SourceError): SourceResult => ({ ok: false, error, message: MESSAGES[error] });
 
 export const NOTEBOOKLM_HOST = "notebooklm.google.com";
+const NOTEBOOKLM_SHORT_LINK_HOST = "notebooklm.link.google";
 const NOTEBOOK_ID = /^[A-Za-z0-9_-]{6,128}$/;
 /** Query parameters that identify the admin's own Google session and must not be stored. */
 const STRIP_PARAMS = new Set(["authuser", "pli", "hl"]);
@@ -125,10 +126,17 @@ function isIpLiteralOrLocal(hostname: string): boolean {
 export function parseNotebookLmLink(raw: string): SourceResult {
   const parsed = parseHttps(raw);
   if (typeof parsed === "string") return fail(parsed);
-  // Exact host match: notebooklm.google.com.evil.example and lookalikes are refused.
-  if (parsed.hostname.toLowerCase() !== NOTEBOOKLM_HOST) return fail("unsupported_provider");
+  const host = parsed.hostname.toLowerCase();
   if (parsed.port) return fail("unsupported_provider");
   const segments = parsed.pathname.split("/").filter(Boolean);
+  if (host === NOTEBOOKLM_SHORT_LINK_HOST) {
+    const shortId = segments[0];
+    if (segments.length !== 1 || !shortId || !NOTEBOOK_ID.test(shortId)) return fail("not_a_notebook_link");
+    const clean = new URL(`https://${NOTEBOOKLM_SHORT_LINK_HOST}/${shortId}`);
+    return { ok: true, source: { kind: "notebooklm_link", url: clean.toString(), notebookId: shortId } };
+  }
+  // Exact host match: lookalike domains are refused.
+  if (host !== NOTEBOOKLM_HOST) return fail("unsupported_provider");
   if (segments[0] !== "notebook" || !segments[1] || !NOTEBOOK_ID.test(segments[1])) return fail("not_a_notebook_link");
   if (segments.length > 3 || (segments[2] !== undefined && !/^[a-z-]{1,20}$/.test(segments[2]))) {
     return fail("not_a_notebook_link");
@@ -172,7 +180,7 @@ export function parseAudioSource(input: SourceInput, options: { allowedHosts: re
 export function detectProvider(raw: string): SourceKind | null {
   try {
     const url = new URL(raw.trim());
-    if (url.hostname.toLowerCase() === NOTEBOOKLM_HOST) return "notebooklm_link";
+    if ([NOTEBOOKLM_HOST, NOTEBOOKLM_SHORT_LINK_HOST].includes(url.hostname.toLowerCase())) return "notebooklm_link";
     return null;
   } catch {
     return null;

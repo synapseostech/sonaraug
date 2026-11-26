@@ -43,7 +43,7 @@ export default function HomePage() {
           <p className="hero__desc">{featuredStation.description}</p>
           <div className="hero__actions">
             <Button variant="primary" onClick={() => player.play(featured)} disabled={!featured.audioUrl}>
-              <PlayIcon size={15} /> {featured.audioUrl ? "Listen live" : "Playback awaiting authorisation"}
+              <PlayIcon size={15} /> {featured.audioUrl ? "Listen live" : "Rights clearance pending"}
             </Button>
             <Link href={`/radio/${featuredStation.slug}`} className="kt-btn kt-btn--secondary">
               Station details
@@ -112,7 +112,7 @@ export default function HomePage() {
             subtitle={
               verifiedStations.length > 0
                 ? `${verifiedStations.length} of ${realStations.length} real stations are streaming now — every endpoint tested in a browser`
-                : `${realStations.length} real stations listed with browser-tested stream evidence — none can play until retransmission is authorised`
+                : `${realStations.length} real stations listed; playback requires both station permission and music rights clearance`
             }
             action={{ href: "/radio", label: "Radio directory" }}
           />
@@ -237,8 +237,8 @@ export default function HomePage() {
 
       <p className="notice">
         <strong>Catalogue status.</strong> Station, show, episode and video records include both genuine broadcaster metadata and clearly
-        labelled demo catalogue content. Stream evidence is not a retransmission licence: playback remains blocked until explicit
-        broadcaster authorisation is recorded.
+        labelled demo catalogue content. Stream evidence and broadcaster permission do not by themselves establish music rights: playback
+        remains blocked until both are cleared for Sonara.
       </p>
     </>
   );

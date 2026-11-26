@@ -4,7 +4,7 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BackendConfigError, resolveBackendConfig } from "./backend-config.ts";
+import { BackendConfigError, resolveBackendConfig, stripPostgresTlsParameters } from "./backend-config.ts";
 
 const GOOD = {
   NEXT_PUBLIC_SUPABASE_URL: "https://sonara-test.supabase.co",
@@ -46,6 +46,27 @@ test("a complete Supabase configuration resolves with TLS required off localhost
   if (config.kind !== "supabase") return;
   assert.equal(config.supabase.databaseSsl, "require");
   assert.equal(config.supabase.url, GOOD.NEXT_PUBLIC_SUPABASE_URL);
+});
+
+test("the optional Supabase CA accepts PEM values with escaped newlines", () => {
+  const ca = "-----BEGIN CERTIFICATE-----\\ncertificate-data\\n-----END CERTIFICATE-----";
+  const config = resolveBackendConfig({ NODE_ENV: "production", ...GOOD, SUPABASE_DB_CA_CERT: ca });
+  assert.equal(config.kind === "supabase" && config.supabase.databaseCa, ca.replace(/\\n/g, "\n"));
+});
+
+test("a malformed Supabase CA is rejected", () => {
+  assert.throws(
+    () => resolveBackendConfig({ NODE_ENV: "production", ...GOOD, SUPABASE_DB_CA_CERT: "not a PEM certificate" }),
+    /SUPABASE_DB_CA_CERT must contain a PEM-encoded certificate/,
+  );
+});
+
+test("Postgres TLS URL parameters cannot override explicit verified TLS settings", () => {
+  const url = "postgresql://user:secret@pooler.example.com:6543/postgres?sslmode=require&sslrootcert=%2Ftmp%2Fca.crt&application_name=sonara";
+  assert.equal(
+    stripPostgresTlsParameters(url),
+    "postgresql://user:secret@pooler.example.com:6543/postgres?application_name=sonara",
+  );
 });
 
 test("a localhost database is allowed for development and refused in production without the smoke-test flag", () => {

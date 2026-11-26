@@ -28,13 +28,19 @@ Ugandan radio and hosts creators' work sits on several rights at once.
 
 ## Before public launch — required
 
-- [ ] Written broadcaster authorisation template, signed per station
+- [ ] Retain and review the reported written broadcaster retransmission permission for each station, including territory, term and scope
 - [ ] Confirmation of whether the platform needs its own UCC authorisation
-- [ ] UPRS (or equivalent) position on retransmitted musical works
+- [ ] UPRS (or equivalent) position on retransmitted musical works and sound recordings
 - [ ] Creator terms: licence grant, territory, term, takedown, monetisation split
 - [ ] Advertiser insertion order template including measurement and refund terms
 - [ ] Takedown workflow with response SLA and a named contact
 - [ ] Record retention policy for rights documents (minimum 3 years after expiry)
+
+The project owner reports having written station retransmission permission for the
+six stations in the Sonara stream registry. The permission documents have not
+been reviewed or stored in this repository. Underlying music rights remain
+unconfirmed; the web player therefore keeps public playback disabled until both
+rights layers are cleared.
 
 ## Deliberate product constraints that reduce risk
 

@@ -117,6 +117,7 @@ async function load(): Promise<DataShape> {
     const defaults = initialData();
     // Forward-compatible: collections added after the file was created start empty.
     const merged = { ...defaults, ...parsed, settings: { ...defaults.settings, ...parsed.settings } } as DataShape;
+    for (const episode of merged.mcEpisodes) episode.study ??= null;
     cache.data = merged;
     cache.mtimeMs = stat.mtimeMs;
     return merged;

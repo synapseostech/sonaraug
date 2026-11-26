@@ -59,6 +59,12 @@ test("hls on a browser without native support is flagged as needing a library", 
   assert.equal(support.mimeType, "application/vnd.apple.mpegurl");
 });
 
+test("hls is supported through a compatible playback library when native support is absent", () => {
+  const support = formatSupport("hls", () => "", { hlsLibrarySupported: true });
+  assert.equal(support.supported, true);
+  assert.equal(support.needsLibrary, true);
+});
+
 test("format probing is case and whitespace insensitive", () => {
   assert.equal(formatSupport("aac", () => "  ProBably ").confidence, "probably");
   assert.equal(formatSupport("aac", () => "MAYBE").confidence, "maybe");

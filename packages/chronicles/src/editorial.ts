@@ -180,7 +180,7 @@ export function transition(episode: EditorialEpisode, action: EditorialAction, a
 }
 
 /** Fields whose change alters what a listener hears or reads. */
-export const SUBSTANTIVE_FIELDS = ["title", "description", "source", "references", "transcript", "contentNotes", "aiDisclosure"] as const;
+export const SUBSTANTIVE_FIELDS = ["title", "description", "source", "study", "references", "transcript", "contentNotes", "aiDisclosure"] as const;
 export type SubstantiveField = (typeof SUBSTANTIVE_FIELDS)[number];
 
 export type EditOutcome =

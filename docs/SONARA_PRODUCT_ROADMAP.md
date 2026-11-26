@@ -94,7 +94,7 @@ W2 and W3 can run in parallel once W1 is done. W2 is **blocked on a legal delive
 ## Wave 2 — Real radio (parallel with W3)
 
 **Goal:** real Ugandan stations playing from database data, with continuous verification and recorded rights.
-**Depends on:** W1 (staff roles, org verification). **Blocked by:** D-3, a signed retransmission agreement for at least one broadcaster.
+**Depends on:** W1 (staff roles, org verification). **Blocked by:** D-3, review of reported broadcaster permissions and confirmation of music rights.
 
 1. `safeFetch` (F-9): DNS resolution, `isReservedIpAddress` on every address, pinned connection, manual redirects, timeouts and byte caps.
 2. The `stream-monitor` worker: DNS → connect → first bytes → content type → ICY → decode sample; writes `stream_health_checks`; moves status `registered → reachable → playable → degraded → failed`; calls `secure_partition` for each new monthly partition.
@@ -155,7 +155,7 @@ W2 and W3 can run in parallel once W1 is done. W2 is **blocked on a legal delive
 |---|---|---|---|
 | D-1 | Product name "Sonara" vs the shipped "Kito"; rename the codename and `@kito/*` scope or only the display name | W0.10 | Display name now through env; rename the scope only if the brand is final |
 | D-2 | Create the dedicated Sonara Supabase project: org, region, plan, budget owner | End of W1 | Approve after W1 passes locally. Separate from the healthcare project, as instructed |
-| D-3 | Broadcaster retransmission agreements: who negotiates, template, first stations | W2 (legal) | Start now; it is the longest lead time |
+| D-3 | Broadcaster retransmission permissions and music-rights coverage | W2 (legal) | Project owner reports written permissions for six stations; review the documents and clear underlying music rights before public playback |
 | D-4 | Creator content pre-moderation vs post-moderation | W3 | Pre-moderate new creators; verified broadcasters publish directly |
 | D-5 | Are verified organisations' contact email and phone public? | W1 | Public business email only; phone private |
 | D-6 | Demo or fictional content in any externally visible build | Any deployment | Behind a "demo" flag, off by default outside local |

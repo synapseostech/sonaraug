@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { staffCan } from "@kito/auth";
-import { describeEditorialError, SOURCE_PROVIDERS, submissionBlockers } from "@kito/chronicles";
+import { describeEditorialError, formatFlashcards, formatQuiz, SOURCE_PROVIDERS, submissionBlockers } from "@kito/chronicles";
 import { KeyValues, Notice, PageHeader, Panel, Pill, formatDate } from "../../../../../components/sonara/ui.tsx";
 import { requireStaff } from "../../../../../lib/server/auth.ts";
 import { adminEpisode } from "../../../../../lib/server/chronicles.ts";
 import { storageStatus } from "../../../../../lib/server/media.ts";
-import { EditorialForms, EpisodeForm, MedicalReviewForm, SourceForm, SourceStatusForm } from "../../forms.tsx";
+import { groqConfigured } from "../../../../../lib/server/groq.ts";
+import { EditorialForms, EpisodeForm, MedicalReviewForm, SourceForm, SourceStatusForm, StudyForm } from "../../forms.tsx";
 import { EditorialPill } from "../../status.tsx";
 import { EDITORIAL_DONE } from "../../messages.ts";
 
@@ -64,6 +65,7 @@ export default async function EpisodeEditPage({ params, searchParams }: { params
               assets={media.map((m) => ({ value: m.id, label: `${m.originalName} · ${formatDate(m.createdAt)}` }))}
               allowedHosts={allowedHosts}
               uploadsAvailable={storage.available}
+              directUpload={storage.backend === "supabase"}
             />
             <p className="sn-small">{storage.note}</p>
             {episode.source ? (
@@ -72,6 +74,24 @@ export default async function EpisodeEditPage({ params, searchParams }: { params
                 <SourceStatusForm episodeId={episode.id} status={episode.source.status} note={episode.source.statusNote} />
               </>
             ) : null}
+          </Panel>
+          <Panel
+            title="Study materials (NotebookLM Studio)"
+            subtitle={
+              episode.study
+                ? `${episode.study.flashcards.length} flashcards · ${episode.study.quiz.length} quiz questions · ${episode.study.notes ? "notes attached" : "no notes"}. Subscribers study them on the episode page.`
+                : "Flashcards and a quiz from the same notebook. Subscribers study them on the episode page, inside Sonara."
+            }
+          >
+            <StudyForm
+              episodeId={episode.id}
+              title={episode.title}
+              published={published}
+              notes={episode.study?.notes ?? ""}
+              aiAvailable={groqConfigured()}
+              flashcards={episode.study ? formatFlashcards(episode.study.flashcards) : ""}
+              quiz={episode.study ? formatQuiz(episode.study.quiz) : ""}
+            />
           </Panel>
           <Panel title="Details">
             <EpisodeForm

@@ -12,7 +12,7 @@ import type {
   PromoCode,
   Subscription,
 } from "@kito/billing";
-import type { AccessOverride, AiDisclosure, EditorialStatus, Reference, SourceKind, SourceStatus } from "@kito/chronicles";
+import type { AccessOverride, AiDisclosure, EditorialStatus, Reference, SourceKind, SourceStatus, StudySet } from "@kito/chronicles";
 
 export type AccountStatus = "active" | "suspended" | "deleted";
 
@@ -143,6 +143,12 @@ export type McEpisode = {
   status: EditorialStatus;
   version: number;
   source: McEpisodeSource | null;
+  /**
+   * NotebookLM Studio material (flashcards, quiz) for subscribers. Gated exactly
+   * like the audio: in Supabase it lives in mc_episode_study, readable by a
+   * listener only through mc_episode_study_for().
+   */
+  study: StudySet | null;
   submittedBy: string | null;
   submittedAt: string | null;
   lastEditedBy: string | null;
@@ -171,7 +177,7 @@ export type MediaAsset = {
   mime: string;
   bytes: number;
   sha256: string;
-  storage: "local_disk";
+  storage: "local_disk" | "supabase";
   path: string;
   originalName: string;
   uploadedBy: string;

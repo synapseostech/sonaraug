@@ -2,7 +2,7 @@ import { createReadStream, promises as fs } from "node:fs";
 import { Readable } from "node:stream";
 import { getViewer } from "../../../../lib/server/auth.ts";
 import { canStreamAsset } from "../../../../lib/server/chronicles.ts";
-import { assetFile } from "../../../../lib/server/media.ts";
+import { assetFile, signedAudioUrl } from "../../../../lib/server/media.ts";
 
 /**
  * Streams uploaded audio after the same access check as playback. Supports
@@ -16,6 +16,13 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   if (!found) return new Response("Not found", { status: 404 });
   const viewer = await getViewer();
   if (!(await canStreamAsset(id, episodeId, viewer))) return new Response("Forbidden", { status: 403, headers: { "Cache-Control": "no-store" } });
+
+  if (found.asset.storage === "supabase") {
+    // Private bucket: hand this listener a short-lived signed link. Sharing it expires; sharing /api/media grants nothing.
+    const url = await signedAudioUrl(found.asset);
+    if (!url) return new Response("Media temporarily unavailable", { status: 503, headers: { "Cache-Control": "no-store" } });
+    return new Response(null, { status: 302, headers: { Location: url, "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer" } });
+  }
 
   let size: number;
   try {

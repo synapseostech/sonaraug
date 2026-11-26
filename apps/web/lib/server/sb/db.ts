@@ -12,7 +12,7 @@
  * and display-only lookups. Each call site says why.
  */
 import pg from "pg";
-import { backendConfig, BackendConfigError } from "../backend-config.ts";
+import { backendConfig, BackendConfigError, stripPostgresTlsParameters } from "../backend-config.ts";
 
 export type Db = pg.PoolClient;
 
@@ -23,8 +23,10 @@ function pool(): pg.Pool {
   const config = backendConfig();
   if (config.kind !== "supabase") throw new BackendConfigError(["Postgres requested while the dev backend is active"]);
   const created = new pg.Pool({
-    connectionString: config.supabase.databaseUrl,
-    ssl: config.supabase.databaseSsl === "require" ? { rejectUnauthorized: true } : false,
+    connectionString: stripPostgresTlsParameters(config.supabase.databaseUrl),
+    ssl: config.supabase.databaseSsl === "require"
+      ? { ...(config.supabase.databaseCa ? { ca: config.supabase.databaseCa } : {}), rejectUnauthorized: true }
+      : false,
     max: Number(process.env.SONARA_DB_POOL_MAX || 10),
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,
@@ -79,6 +81,27 @@ export const withService = <T>(reason: string, fn: (db: Db) => Promise<T>) => ru
 /** Postgres error codes the services translate into user-facing messages. */
 export function pgCode(error: unknown): string | null {
   return typeof error === "object" && error !== null && "code" in error ? String((error as { code: unknown }).code) : null;
+}
+
+/**
+ * Runs a query that depends on a newer migration. If the table or function does
+ * not exist yet (42P01 / 42883 / 42703), the statement is rolled back to a savepoint so
+ * the surrounding transaction stays usable, and null is returned. Lets a code
+ * deploy go out safely before its migration has been applied.
+ */
+export async function optionalQuery(db: Db, sql: string, params: unknown[] = []): Promise<pg.QueryResult | null> {
+  await db.query("savepoint sonara_optional");
+  try {
+    const result = await db.query(sql, params);
+    await db.query("release savepoint sonara_optional");
+    return result;
+  } catch (error) {
+    const code = pgCode(error);
+    if (code !== "42P01" && code !== "42883" && code !== "42703") throw error;
+    await db.query("rollback to savepoint sonara_optional");
+    console.warn(`[db] optional query skipped (${code}); apply the latest migrations: ${sql.slice(0, 60)}…`);
+    return null;
+  }
 }
 
 export async function closePool(): Promise<void> {

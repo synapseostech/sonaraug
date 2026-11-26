@@ -34,7 +34,8 @@ import type { RadioEndpoint, StreamProtocol } from "@kito/media";
  *  playable              — decoded and sustained in a real browser
  *  temporarily_unavailable — was playable, failed the most recent check
  *  unsupported           — answers, but no browser can decode it as-is
- *  not_authorised        — plays, but we have no right to aggregate it
+ *  rights_pending        — one or more required rights layers are not cleared
+ *  not_authorised        — a rights holder has explicitly denied permission
  */
 export type StreamStatus =
   | "unverified"
@@ -42,9 +43,11 @@ export type StreamStatus =
   | "playable"
   | "temporarily_unavailable"
   | "unsupported"
+  | "rights_pending"
   | "not_authorised";
 
 export type StreamFormat = "mp3" | "aac" | "hls";
+export type MusicRightsStatus = "not_reviewed" | "cleared";
 
 /**
  * Rights position. Kept apart from `StreamStatus` on purpose: a stream can be
@@ -103,6 +106,8 @@ export type StationStreamRecord = {
   readonly endpoints: readonly StreamEndpointRecord[];
   readonly rights: RightsStatus;
   readonly rightsNote: string;
+  readonly musicRights: MusicRightsStatus;
+  readonly musicRightsNote: string;
   readonly discovery: DiscoveryMethod;
   readonly discoveredFrom: string;
   readonly limitations: readonly string[];
@@ -114,6 +119,10 @@ export type StationStreamRecord = {
 
 const CHECK_DATE = "2026-11-22";
 const BROWSER = "Chrome 158.0.8127.36 (headless=new) on Linux x86_64";
+const BROADCASTER_AUTHORIZATION_NOTE =
+  "Project owner confirmed written permission covering Sonara retransmission on 2026-11-24; the document itself is retained outside this repository.";
+const MUSIC_RIGHTS_PENDING_NOTE =
+  "Rights for musical compositions and sound recordings have not been confirmed for Sonara distribution.";
 
 export const STREAM_REGISTRY: readonly StationStreamRecord[] = Object.freeze([
   /* ---------------------------------------------------------------------- */
@@ -147,15 +156,16 @@ export const STREAM_REGISTRY: readonly StationStreamRecord[] = Object.freeze([
         },
       },
     ],
-    rights: "broadcaster_published",
+    rights: "broadcaster_authorised",
     rightsNote:
-      "Stream is the endpoint the broadcaster's own website plays, served from the broadcaster's CloudRadio account. Publicly reachable and CORS-enabled, but no written retransmission agreement is held yet.",
+      `${BROADCASTER_AUTHORIZATION_NOTE} The stream is served from the broadcaster's CloudRadio account and is publicly reachable with CORS.`,
+    musicRights: "not_reviewed",
+    musicRightsNote: MUSIC_RIGHTS_PENDING_NOTE,
     discovery: "official-site-api",
     discoveredFrom: "beatradio.co.ug → https://capitalfm.deepcodegroup.com/api/v1/user/station (JSON `streaming_link`)",
     limitations: [
       "Shoutcast-style stream: no metadata beyond ICY tags (the station publishes icy-name \"My Station name\").",
       "Bitrate is CBR 128 kbps — roughly 56 MB/hour of listener data.",
-      "No written retransmission agreement on file.",
     ],
   },
 
@@ -190,15 +200,16 @@ export const STREAM_REGISTRY: readonly StationStreamRecord[] = Object.freeze([
         },
       },
     ],
-    rights: "broadcaster_published",
+    rights: "broadcaster_authorised",
     rightsNote:
-      "Endpoint comes from the same broadcaster-operated station API that serves the Capital Radio web player. Public and CORS-enabled; written authorisation not yet obtained.",
+      `${BROADCASTER_AUTHORIZATION_NOTE} The endpoint comes from the same broadcaster-operated station API that serves the Capital Radio web player.`,
+    musicRights: "not_reviewed",
+    musicRightsNote: MUSIC_RIGHTS_PENDING_NOTE,
     discovery: "official-site-api",
     discoveredFrom: "Capital Radio station API `https://capitalfm.deepcodegroup.com/api/v1/user/station` (JSON `streaming_link`)",
     limitations: [
       "Sustained playback observed for a shorter window than Beat FM (4s sample); re-check before production launch.",
       "ICY tags are left at provider defaults (icy-name \"No Name\"), so now-playing metadata is unavailable.",
-      "No written retransmission agreement on file.",
     ],
   },
 
@@ -233,9 +244,11 @@ export const STREAM_REGISTRY: readonly StationStreamRecord[] = Object.freeze([
         },
       },
     ],
-    rights: "third_party_aggregator",
+    rights: "broadcaster_authorised",
     rightsNote:
-      "The official site embeds this URL, but it is served by StreamGuys for an aggregator brand (ICY name \"Wulilizaradio.ug\"), not from a radiosimba.ug host. Embedded playback is evidenced; redistribution rights are not. Treat as demonstration-only until the broadcaster confirms.",
+      `${BROADCASTER_AUTHORIZATION_NOTE} The official site embeds this URL, but it is served by StreamGuys for an aggregator brand (ICY name "Wulilizaradio.ug"), not from a radiosimba.ug host.`,
+    musicRights: "not_reviewed",
+    musicRightsNote: MUSIC_RIGHTS_PENDING_NOTE,
     discovery: "official-site-html",
     discoveredFrom: "https://www.radiosimba.ug/ (player markup)",
     limitations: [
@@ -276,9 +289,11 @@ export const STREAM_REGISTRY: readonly StationStreamRecord[] = Object.freeze([
         },
       },
     ],
-    rights: "broadcaster_published",
+    rights: "broadcaster_authorised",
     rightsNote:
-      "Stream discovered on the official bukedde.co.ug player and served by the Vision Group streaming vendor (hydeinnovations). Publicly reachable with CORS; written authorisation not yet obtained.",
+      `${BROADCASTER_AUTHORIZATION_NOTE} The stream is published on the official Bukedde player and served by the Vision Group streaming vendor.`,
+    musicRights: "not_reviewed",
+    musicRightsNote: MUSIC_RIGHTS_PENDING_NOTE,
     discovery: "official-site-player",
     discoveredFrom: "https://bukedde.co.ug/ (player opens the hydeinnovations HLS origin)",
     limitations: [
@@ -319,9 +334,11 @@ export const STREAM_REGISTRY: readonly StationStreamRecord[] = Object.freeze([
         },
       },
     ],
-    rights: "not_reviewed",
+    rights: "broadcaster_authorised",
     rightsNote:
-      "Endpoint is the one the station's own WordPress player uses. It plays in browsers, but the mount advertises icy-pub=0 and serves non-MPEG bytes to non-browser clients, which suggests a reseller proxy rather than a deliberately published public mount. Confirm with the broadcaster before relying on it.",
+      `${BROADCASTER_AUTHORIZATION_NOTE} The endpoint is the one the station's own WordPress player uses, but the mount advertises icy-pub=0 and is served through a reseller proxy.`,
+    musicRights: "not_reviewed",
+    musicRightsNote: MUSIC_RIGHTS_PENDING_NOTE,
     discovery: "official-site-player",
     discoveredFrom: "https://nextradio.co.ug/ (radio-player plugin configuration)",
     limitations: [
@@ -335,9 +352,11 @@ export const STREAM_REGISTRY: readonly StationStreamRecord[] = Object.freeze([
   {
     stationSlug: "record-fm-97-7",
     endpoints: [],
-    rights: "not_reviewed",
+    rights: "broadcaster_authorised",
     rightsNote:
-      "No endpoint discovered. recordradio.co.ug serves a Cloudflare Turnstile challenge to non-browser clients, so neither the page nor its player could be inspected. Nothing was guessed or probed beyond the public hostname.",
+      `${BROADCASTER_AUTHORIZATION_NOTE} No endpoint has been discovered; the official site presents a browser challenge, so no URL has been guessed.`,
+    musicRights: "not_reviewed",
+    musicRightsNote: MUSIC_RIGHTS_PENDING_NOTE,
     discovery: "not_discovered",
     discoveredFrom: "https://recordradio.co.ug/ (blocked by Cloudflare Turnstile)",
     limitations: [
@@ -357,11 +376,15 @@ export function getStreamRecord(stationSlug: string): StationStreamRecord | unde
   return BY_SLUG.get(stationSlug);
 }
 
+export function hasPlaybackRights(record: Pick<StationStreamRecord, "rights" | "musicRights">): boolean {
+  return record.rights === "broadcaster_authorised" && record.musicRights === "cleared";
+}
+
 /** The endpoint the player should open, or null when nothing is playable. */
 export function playableEndpoint(stationSlug: string): StreamEndpointRecord | null {
   const record = BY_SLUG.get(stationSlug);
   if (!record) return null;
-  if (record.rights !== "broadcaster_authorised") return null;
+  if (!hasPlaybackRights(record)) return null;
   return record.endpoints.find((endpoint) => endpoint.status === "playable") ?? null;
 }
 
@@ -369,7 +392,7 @@ export function playableEndpoint(stationSlug: string): StreamEndpointRecord | nu
 export function verifiedStreamSlugs(): readonly string[] {
   return STREAM_REGISTRY.filter(
     (record) =>
-      record.rights === "broadcaster_authorised" &&
+      hasPlaybackRights(record) &&
       record.endpoints.some((endpoint) => endpoint.status === "playable"),
   ).map((record) => record.stationSlug);
 }
@@ -381,8 +404,9 @@ export function verifiedStreamSlugs(): readonly string[] {
 export function stationStreamStatus(stationSlug: string): StreamStatus | null {
   const record = BY_SLUG.get(stationSlug);
   if (!record) return null;
-  if (record.rights !== "broadcaster_authorised") return "not_authorised";
+  if (record.rights === "not_authorised") return "not_authorised";
   if (record.endpoints.length === 0) return "unverified";
+  if (!hasPlaybackRights(record)) return "rights_pending";
   if (record.endpoints.some((endpoint) => endpoint.status === "playable")) return "playable";
   if (record.endpoints.some((endpoint) => endpoint.status === "temporarily_unavailable")) return "temporarily_unavailable";
   if (record.endpoints.some((endpoint) => endpoint.status === "unsupported")) return "unsupported";
@@ -394,7 +418,7 @@ export function stationStreamStatus(stationSlug: string): StreamStatus | null {
 export function radioEndpointsFor(stationSlug: string): RadioEndpoint[] {
   const record = BY_SLUG.get(stationSlug);
   if (!record) return [];
-  if (record.rights !== "broadcaster_authorised") return [];
+  if (!hasPlaybackRights(record)) return [];
   return record.endpoints
     .filter((endpoint) => endpoint.status === "playable")
     .map((endpoint, index) => ({
@@ -417,7 +441,8 @@ export const STREAM_STATUS_LABEL: Record<StreamStatus, string> = {
   playable: "Verified live",
   temporarily_unavailable: "Temporarily unavailable",
   unsupported: "Unsupported in browser",
-  not_authorised: "Not licensed to rebroadcast",
+  rights_pending: "Rights clearance pending",
+  not_authorised: "Not authorised",
 };
 
 /** Badge tone for each status, matching the shared Badge component. */
@@ -427,15 +452,21 @@ export const STREAM_STATUS_TONE: Record<StreamStatus, "live" | "demo" | "accent"
   unverified: "neutral",
   temporarily_unavailable: "demo",
   unsupported: "demo",
+  rights_pending: "neutral",
   not_authorised: "demo",
 };
 
 export const RIGHTS_STATUS_LABEL: Record<RightsStatus, string> = {
   not_reviewed: "Rights not reviewed",
   broadcaster_published: "Published by broadcaster — agreement pending",
-  broadcaster_authorised: "Broadcaster authorised",
+  broadcaster_authorised: "Station retransmission permission confirmed",
   third_party_aggregator: "Third-party aggregator — unconfirmed",
   not_authorised: "Not authorised",
+};
+
+export const MUSIC_RIGHTS_STATUS_LABEL: Record<MusicRightsStatus, string> = {
+  not_reviewed: "Not reviewed",
+  cleared: "Cleared for Sonara",
 };
 
 export const DISCOVERY_LABEL: Record<DiscoveryMethod, string> = {

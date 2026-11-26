@@ -11,7 +11,7 @@
 | T5 | Service-role key leaking to a client | Key only in edge functions/workers; `SERVER_ONLY_KEYS` list; bundle grep in CI (to add) |
 | T6 | Audience measurement deanonymisation | Analytics events carry no user id, no email/phone; guard functions throw on PII-shaped keys and values |
 | T7 | Cache poisoning / XSS via comment or metadata | Input validated at the edge with zod; React escapes by default; CSP to be added with web Phase 3 |
-| T8 | Copyright exposure from retransmission | Publish gate requires a rights record; broadcaster authorisation stored per station |
+| T8 | Copyright exposure from retransmission | Public playback requires per-station retransmission permission and music rights clearance |
 | T9 | Abuse of anonymous sessions | Anonymous users can stream radio and file reports only; no writes to content |
 | T10 | Malicious upload (audio/video) | Uploads are signed and scoped; status `quarantined` exists; provider transcodes out-of-band |
 
@@ -51,7 +51,7 @@ before public launch:
 | Lawful basis and privacy notice for listeners, creators, broadcasters | Draft wording not written | Legal review |
 | Cross-border transfer basis (Supabase/Vercel/Cloudflare regions) | Unresolved | Decide region strategy; document transfer basis |
 | UCC authorisation / licensing for content distribution | Unresolved | Confirm whether the platform needs a licence or operates under broadcaster authorisations |
-| UPRS / music rights for retransmission | Per-station rights records only | Written broadcaster authorisations per station before listing |
+| UPRS / music rights for retransmission | Unresolved; project owner reports broadcaster permission for six stations | Confirm music-work and sound-recording coverage with qualified counsel / relevant rights holders |
 | Creator content licence terms (what we may host, monetise, sublicense) | Not drafted | Terms of service + creator agreement |
 | Google Play / Apple App Store data-safety declarations | Not started | Complete at submission with real data flows |
 | Children's data (under-18 listeners) | Not addressed | Age gating or policy decision |

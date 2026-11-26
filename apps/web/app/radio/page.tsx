@@ -117,7 +117,7 @@ export default function RadioPage() {
       <section className="hero">
         <div>
           <p className="hero__eyebrow">
-            {featured.audioUrl ? <Badge tone="live">Verified live</Badge> : <Badge tone="demo">Awaiting authorisation</Badge>} Radio directory
+            {featured.audioUrl ? <Badge tone="live">Verified live</Badge> : <Badge tone="demo">Rights review pending</Badge>} Radio directory
           </p>
           <h1 className="hero__title">{featuredStation.name}</h1>
           <p className="hero__desc">
@@ -125,7 +125,7 @@ export default function RadioPage() {
           </p>
           <div className="hero__actions">
             <Button variant="primary" onClick={() => player.play(featured)} disabled={!featured.audioUrl}>
-              <PlayIcon size={15} /> {!featured.audioUrl ? "Playback awaiting authorisation" : player.isCurrent(featured.key) && player.status === "playing" ? "Pause live radio" : "Listen live"}
+              <PlayIcon size={15} /> {!featured.audioUrl ? "Rights clearance pending" : player.isCurrent(featured.key) && player.status === "playing" ? "Pause live radio" : "Listen live"}
             </Button>
             <Link href={`/radio/${featuredStation.slug}`} className="kt-btn kt-btn--secondary">
               Open station
@@ -281,6 +281,10 @@ export default function RadioPage() {
               <span>No working endpoint has been discovered, so nothing is claimed either way.</span>
             </li>
             <li>
+              <Badge tone="neutral">Rights clearance pending</Badge>
+              <span>Station permission and music rights must both be cleared before Sonara can play the stream.</span>
+            </li>
+            <li>
               <Badge tone="demo">Demo</Badge>
               <span>Fictional catalogue entry for interface testing.</span>
             </li>
@@ -295,7 +299,7 @@ export default function RadioPage() {
         <em>demo</em> are fictional sample content. No listener counts are measured — figures shown for demo stations are invented sample
         values, and real stations show none.
         {verifiedStations.length === 0
-          ? " Playback is currently off for every real station: stream evidence is not a retransmission licence, and no broadcaster authorisation has been recorded yet."
+          ? " Playback is currently off for every real station until both station retransmission permission and music rights are cleared."
           : null}
       </p>
       )}

@@ -189,7 +189,7 @@ export const stations: Station[] = [
     languages: ["lg", "en"],
     tagline: "Long-running Luganda talk and music.",
     description:
-      "One of Kampala's established Luganda stations, mixing talk, culture and music. The official site embeds a StreamGuys endpoint branded for a third-party aggregator, so playback works but broadcaster authorisation for aggregation is not yet confirmed.",
+      "One of Kampala's established Luganda stations, mixing talk, culture and music. The official site embeds a StreamGuys endpoint branded for a third-party aggregator; its source and browser playback have been verified.",
     origin: "broadcaster",
     officialWebsite: "https://www.radiosimba.ug",
   },
@@ -204,7 +204,7 @@ export const stations: Station[] = [
     languages: ["en", "lg"],
     tagline: "Talk-led adult contemporary on 106.1.",
     description:
-      "Talk-led station on 106.1 FM in Kampala. Its own web player points at a Centova Cast proxy mount that returns a payload no browser can decode, so the station is listed with an accurate \"unavailable\" state instead of a play button that would fail after the click.",
+      "Talk-led station on 106.1 FM in Kampala. Its own web player points to a Centova Cast proxy mount; browser playback has been verified, though the proxy behaves unusually for non-browser clients.",
     origin: "broadcaster",
     officialWebsite: "https://nextradio.co.ug",
   },

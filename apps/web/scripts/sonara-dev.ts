@@ -133,6 +133,18 @@ async function main() {
             status: "published",
             version: 1,
             source: { kind: "uploaded_audio", url: null, assetId: id, status: "active", statusNote: "", checkedAt: null, updatedAt: now.toISOString() },
+            // Sample study material so the flashcard/quiz studio can be exercised (free episode 1, premium episode 3).
+            study:
+              n === 1 || n === 3
+                ? {
+                    flashcards: [
+                      { front: "[Sample] What frequency is this test tone?", back: `${330 + n * 110} Hz.` },
+                      { front: "[Sample] Is this medical content?", back: "No — it is generated test audio." },
+                    ],
+                    quiz: [{ prompt: "[Sample] How long is this tone?", options: [`${20 + n * 5} seconds`, "One hour", "Five minutes"], answer: 0, explanation: "Sample question for testing the quiz." }],
+                    notes: `# [Sample] Notes for test tone ${n}\n\nSAMPLE CONTENT FOR LOCAL TESTING — not medical notes.\n\n## Facts\n- The tone plays at **${330 + n * 110} Hz**.\n- It lasts *${20 + n * 5} seconds*.\n\n> Subscribers only: these notes feed the AI tutor.`,
+                  }
+                : null,
             submittedBy: null,
             submittedAt: null,
             lastEditedBy: null,

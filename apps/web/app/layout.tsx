@@ -12,7 +12,7 @@ import { getViewer } from "../lib/server/auth.ts";
 
 export const metadata: Metadata = {
   title: { default: `${brand.name} — ${brand.tagline}`, template: `%s · ${brand.name}` },
-  description: "Ugandan radio, podcasts, Medical Chronicles and video. Development build.",
+  description: "Ugandan radio, podcasts, Medical Chronicles and video.",
 };
 
 export const viewport: Viewport = { themeColor: darkTheme.bg, width: "device-width", initialScale: 1 };

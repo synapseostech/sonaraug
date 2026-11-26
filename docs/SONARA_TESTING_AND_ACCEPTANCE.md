@@ -31,7 +31,7 @@
 
 | Journey | Observed | Verdict |
 |---|---|---|
-| Play a real station (Beat FM) | Button reads "Stream not available"; status "Not licensed to rebroadcast"; no audio | Correct; the rights gate holds (client-side only, F-12) |
+| Play a real station (Capital FM) | Button is disabled; verified MP3 endpoint is shown; station permission is reported but music rights are unreviewed | Correct; playback remains gated until both rights layers are cleared |
 | Play the first station on a station page (a related demo station) | "DEMO · On air · 0:02 listening"; `<audio>` has **no src** | Simulated; labelled DEMO, but "On air" overstates it |
 | Play a podcast episode | Clock `0:03 / 49:48`; `<audio>` has **no src** | Simulated playback that saves fictional progress |
 | Play a video | Video goes into the **audio** bar with a clock; **no `<video>` element** | Simulated |

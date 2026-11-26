@@ -49,6 +49,15 @@ test("MC-2 a NotebookLM share link is accepted and normalised", () => {
   assert.equal(parseNotebookLmLink("https://notebooklm.google.com/notebook/abc123def/audio").ok, true);
 });
 
+test("NotebookLM short share links are accepted without expanding or fetching them", () => {
+  const result = parseNotebookLmLink("https://notebooklm.link.google/r8vwuaaMDF96");
+  assert.equal(result.ok, true);
+  if (result.ok && result.source.kind === "notebooklm_link") {
+    assert.equal(result.source.url, "https://notebooklm.link.google/r8vwuaaMDF96");
+    assert.equal(result.source.notebookId, "r8vwuaaMDF96");
+  }
+});
+
 test("MC-3 invalid and unsupported links are rejected safely", () => {
   const cases: [string, string][] = [
     ["", "empty"],
@@ -62,6 +71,9 @@ test("MC-3 invalid and unsupported links are rejected safely", () => {
     ["https://notebooklm.google.com/", "not_a_notebook_link"],
     ["https://notebooklm.google.com/notebook/<script>", "not_a_notebook_link"],
     ["https://notebooklm.google.com/notebook/abc123def/a/b/c", "not_a_notebook_link"],
+    ["https://notebooklm.link.google/", "not_a_notebook_link"],
+    ["https://notebooklm.link.google/r8vwuaaMDF96/extra", "not_a_notebook_link"],
+    ["https://notebooklm.link.google.evil.example/r8vwuaaMDF96", "unsupported_provider"],
   ];
   for (const [input, error] of cases) {
     const result = parseNotebookLmLink(input);

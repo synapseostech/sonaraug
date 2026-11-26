@@ -34,12 +34,9 @@ export function PlayPauseButton({
   // play button that only fails after the click.
   const blocked = Boolean(item.live && (!item.audioUrl || item.live.status !== "playable"));
   const loading = active && (player.status === "loading" || player.status === "reconnecting");
-  const unavailableLabel =
-    item.live?.status === "unsupported"
-      ? `${item.title} cannot be played in this browser`
-      : item.live?.status === "unverified"
-        ? `${item.title} stream has not been verified`
-        : `${item.title} is temporarily unavailable`;
+  const unavailableLabel = item.live
+    ? `${item.title}: ${STREAM_STATUS_LABEL[item.live.status]}`
+    : `${item.title} is unavailable`;
   return (
     <IconButton
       label={blocked ? unavailableLabel : label ?? (playing ? `Pause ${item.title}` : `Play ${item.title}`)}

@@ -103,9 +103,9 @@ export function Sidebar({ viewer }: { viewer: ShellViewer }) {
           </>
         ) : (
           <>
-            <strong>Radio awaiting authorisation</strong>
-            Real Ugandan stations are listed with stream evidence, but playback stays off until each broadcaster authorises
-            retransmission. General podcasts, video and demo stations are sample content.
+            <strong>Radio rights review</strong>
+            Broadcaster permission has been reported, but music rights must also be cleared before Sonara can play these streams.
+            General podcasts, video and demo stations are sample content.
           </>
         )}
       </div>
@@ -146,10 +146,10 @@ export function TopBar({ viewer }: { viewer: ShellViewer }) {
           title={
             RADIO_PLAYS
               ? "Radio plays verified live Ugandan streams; general podcasts and video are sample content."
-              : "No station plays yet: retransmission authorisation is pending. General podcasts and video are sample content."
+              : "No station is cleared for playback yet. Broadcaster and music rights must both be cleared."
           }
         >
-          <span aria-hidden="true">●</span> {RADIO_PLAYS ? "Live radio · demo catalogue" : "Development build"}
+          <span aria-hidden="true">●</span> {RADIO_PLAYS ? "Live radio enabled" : "Radio rights review"}
         </span>
         {viewer ? (
           <Link href="/account" className="sn-account-chip" aria-label={`Your account (${viewer.displayName})`}>

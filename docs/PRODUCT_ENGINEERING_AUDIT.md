@@ -47,10 +47,11 @@ git revisions in the current repository, and all project files remain untracked.
 
 ## Key risks and gaps
 
-1. **Rights gate is P0.** Technical playback verification is separate from
-   retransmission permission. The radio registry now blocks playback unless a
-   `broadcaster_authorised` rights state is recorded. Technical evidence alone
-   must not be presented as permission to aggregate.
+1. **Rights gate is P0.** The project owner reports written retransmission
+   permission for the six registered broadcasters, but the documents have not
+   been independently reviewed or stored in the repository. Music composition
+   and sound-recording rights remain unconfirmed. The radio registry therefore
+   blocks playback until both station permission and music rights are cleared.
 2. **Authentication and RLS are not active in the web.** Mock role selection,
    local storage and TypeScript permissions cannot enforce production security.
 3. **Microphone policy required alignment.** The recorder uses `getUserMedia`,
@@ -71,8 +72,8 @@ git revisions in the current repository, and all project files remain untracked.
 
 ### P0 — launch blockers
 
-- Obtain and record signed broadcaster retransmission authorisation before
-  enabling real stream playback in a public build.
+- Review and retain the reported broadcaster authorisations; confirm the
+  platform's music-work and sound-recording rights before enabling public radio.
 - Implement real authentication and server/database-enforced role boundaries.
 - Remove or clearly isolate simulated role, publication and review actions.
 - Complete microphone permission, privacy, CSP and rate-limit requirements.

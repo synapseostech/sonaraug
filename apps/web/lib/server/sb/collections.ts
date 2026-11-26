@@ -97,7 +97,7 @@ export const mcEpisodes: CollectionDef<McEpisode> = {
     season: num(r.season), episodeNumber: num(r.episode_number), coverAssetId: str(r.cover_asset_id), durationSeconds: num(r.duration_seconds),
     transcript: text(r.transcript), contentNotes: text(r.content_notes), references: (r.reference_list as McEpisode["references"]) ?? [],
     aiDisclosure: (r.ai_disclosure as McEpisode["aiDisclosure"]) ?? null, accessOverride: r.access_override as McEpisode["accessOverride"],
-    downloadAllowed: Boolean(r.download_allowed), status: r.status as McEpisode["status"], version: Number(r.version), source: null,
+    downloadAllowed: Boolean(r.download_allowed), status: r.status as McEpisode["status"], version: Number(r.version), source: null, study: null,
     submittedBy: str(r.submitted_by), submittedAt: iso(r.submitted_at), lastEditedBy: str(r.last_edited_by), approvedVersion: num(r.approved_version),
     approvedBy: str(r.approved_by), approvedAt: iso(r.approved_at), publishedAt: iso(r.published_at), withdrawnAt: iso(r.withdrawn_at),
     withdrawnReason: str(r.withdrawn_reason), lastReviewedAt: iso(r.last_reviewed_at), lastReviewedBy: str(r.last_reviewed_by),
@@ -156,9 +156,9 @@ export const media: CollectionDef<MediaAsset> = {
   select: "t.*",
   fromRow: (r) => {
     const meta = (r.metadata as Record<string, unknown>) ?? {};
-    return { id: String(r.id), kind: r.kind === "image" ? "image" : "audio", mime: String(r.mime_type), bytes: Number(r.size_bytes ?? 0), sha256: text(r.checksum_sha256), storage: "local_disk", path: text(r.storage_key), originalName: text(meta.originalName), uploadedBy: text(r.owner_profile_id), createdAt: isoReq(r.created_at) };
+    return { id: String(r.id), kind: r.kind === "image" ? "image" : "audio", mime: String(r.mime_type), bytes: Number(r.size_bytes ?? 0), sha256: text(r.checksum_sha256), storage: r.storage_backend === "supabase" ? "supabase" : "local_disk", path: text(r.storage_key), originalName: text(meta.originalName), uploadedBy: text(r.owner_profile_id), createdAt: isoReq(r.created_at) };
   },
-  toRow: (m) => ({ id: m.id, kind: m.kind, storage_backend: "local_dev", storage_key: m.path, mime_type: m.mime, size_bytes: m.bytes, checksum_sha256: m.sha256, status: "ready", owner_profile_id: m.uploadedBy, metadata: JSON.stringify({ originalName: m.originalName }) }),
+  toRow: (m) => ({ id: m.id, kind: m.kind, storage_backend: m.storage === "supabase" ? "supabase" : "local_dev", storage_key: m.path, mime_type: m.mime, size_bytes: m.bytes, checksum_sha256: m.sha256, status: "ready", owner_profile_id: m.uploadedBy, metadata: JSON.stringify({ originalName: m.originalName }) }),
   writer: "system",
   insertOnly: true,
 };

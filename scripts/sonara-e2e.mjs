@@ -18,6 +18,7 @@
 // Exit code 1 if any check fails. Uses only fictitious @example.test accounts.
 // =============================================================================
 import { spawn, execFileSync } from "node:child_process";
+import { createServer } from "node:http";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -220,6 +221,27 @@ async function checkout(p, outcome, opts = {}) {
 }
 
 console.log(`Sonara e2e against ${BASE} (run ${RUN})`);
+// A stand-in for Groq's chat completions API (the server is started with
+// SONARA_GROQ_ENDPOINT pointing here). Canned, deterministic replies.
+const NOTES = "# Intestinal obstruction\n\n## Causes\n- Adhesions are the commonest cause in adults.\n- Hernias and malignancy follow.\n\n## Red flags\nStrangulation is suggested by constant pain, fever, tachycardia and peritonism. It needs urgent surgery.\n\n## Management\nDrip and suck: IV fluids and nasogastric decompression, then treat the cause.";
+let tutorEpisodePath = "";
+const groqStub = createServer((req, res) => {
+  let raw = "";
+  req.on("data", (c) => (raw += c));
+  req.on("end", () => {
+    const prompt = JSON.parse(raw || "{}").messages?.at(-1)?.content ?? "";
+    const n = Number(/Write (\d+) multiple-choice/.exec(prompt)?.[1] ?? 0);
+    const content = n
+      ? { questions: Array.from({ length: n }, (_, i) => ({ question: i === 0 ? "[Stub] Commonest cause of adult small-bowel obstruction?" : `[Stub] Question ${i + 1}?`, options: ["Hernia", "Adhesions", "Volvulus", "Malignancy"], answer: 1, explanation: "Adhesions, per the notes." })) }
+      : prompt.includes("<answer>")
+        ? { verdict: "partial", feedback: "[Stub] Good start; mention fever and peritonism.", modelAnswer: "Constant pain, fever, tachycardia and peritonism." }
+        : { question: "[Stub] Which features suggest strangulation?" };
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }));
+  });
+}).listen(9355, "127.0.0.1");
+process.on("exit", () => groqStub.close());
+
 const visitor = await newPerson("visitor");
 const l1 = await newPerson("listener1");
 const l2 = await newPerson("listener2");
@@ -407,17 +429,44 @@ await check("MC-2/MC-3", "invalid links are rejected; a NotebookLM link is accep
   await admin.waitFor("location.pathname.startsWith('/admin/medical-chronicles/episodes/epi_')");
   newEpisodePath = new URL(await admin.url()).pathname;
   for (const bad of ["https://notebooklm.google.com.evil.example/notebook/abcdef123", "javascript:alert(1)", "http://notebooklm.google.com/notebook/abcdef123"]) {
+    await admin.evaluate(`document.querySelector("form[aria-label='Audio source'] input[name=kind][value=notebooklm_link]").click()`);
+    await admin.waitFor(`document.querySelector("form[aria-label='Audio source'] input[name=url]")`);
     await admin.fill({ url: bad }, "document.querySelector('form[aria-label=\"Audio source\"]')");
     await admin.click("Save audio source", "Audio source");
     await admin.waitFor("document.querySelector('form[aria-label=\"Audio source\"] [role=alert]')");
   }
   await admin.goto(newEpisodePath);
+  await admin.evaluate(`document.querySelector("form[aria-label='Audio source'] input[name=kind][value=notebooklm_link]").click()`);
+  await admin.waitFor(`document.querySelector("form[aria-label='Audio source'] input[name=url]")`);
   await admin.fill({ url: "https://notebooklm.google.com/notebook/0a1b2c3d-sample?authuser=2" }, "document.querySelector('form[aria-label=\"Audio source\"]')");
   await admin.click("Save audio source", "Audio source");
   await admin.waitText("Audio source saved");
   await admin.goto(newEpisodePath);
   const text = await admin.text();
   assert(text.includes("https://notebooklm.google.com/notebook/0a1b2c3d-sample") && !text.includes("authuser"), "link not normalised");
+});
+await check("MC-S1", "an editor imports NotebookLM flashcards and a quiz; malformed items are refused", async () => {
+  await admin.goto(newEpisodePath);
+  const form = "document.querySelector('form[aria-label=\"Study materials\"]')";
+  await admin.fill({ flashcards: "Q: Commonest cause of adult SBO?\nA: Adhesions\n\nQ: Coffee-bean sign?\nA: Sigmoid volvulus", quiz: "1. Sign of strangulation?\nA) Colic\nB) Constant pain\n" }, form);
+  await admin.waitText("need attention");
+  assert(await admin.evaluate(`[...${form}.querySelectorAll('button')].find((b) => b.innerText.includes('Save study materials')).disabled`), "save allowed with a broken question");
+  await admin.fill({ quiz: "1. Sign of strangulation?\nA) Colic\nB) Constant pain\nAnswer: B\nExplanation: Ischaemia causes continuous pain." }, form);
+  await admin.click("Save study materials", "Study materials");
+  await admin.waitText("Saved 2 flashcards and 1 quiz question");
+});
+await check("MC-S3", "an editor loads Markdown notes and drafts a quiz from them with the AI tutor", async () => {
+  await admin.goto(newEpisodePath);
+  const form = "document.querySelector('form[aria-label=\"Study materials\"]')";
+  await admin.fill({ notes: NOTES }, form);
+  await admin.click("Draft quiz from notes with Groq", "Study materials");
+  await admin.waitText("drafted question");
+  assert(String(await admin.evaluate("document.querySelector('textarea[name=quiz]').value")).includes("[Stub] Commonest cause"), "drafted question not added to the quiz box");
+  // Discard the draft (an editor reviews before saving); keep only the notes.
+  await admin.goto(newEpisodePath);
+  await admin.fill({ notes: NOTES }, form);
+  await admin.click("Save study materials", "Study materials");
+  await admin.waitText("characters of notes");
 });
 await check("MC-9a", "an unapproved episode is not publicly available", async () => {
   const slug = await admin.evaluate("[...document.querySelectorAll('a')].find((a) => a.innerText.trim() === 'Preview page')?.getAttribute('href')");
@@ -455,6 +504,58 @@ await check("MC-8", "the series is published and the episode links out to Notebo
   assert(text.includes("Provider-controlled playback") && text.includes("AI-generated audio"), "honesty labels missing");
   assert(!(await visitor.evaluate("!!document.querySelector('iframe')")), "an iframe was rendered");
   await visitor.screenshot("visitor-notebooklm-episode");
+});
+await check("MC-S2", "a listener flips flashcards and answers the quiz inside Sonara", async () => {
+  await visitor.waitText("Revise this episode");
+  await visitor.click("Reveal answer");
+  await visitor.waitText("Adhesions");
+  await visitor.click("I knew it");
+  await visitor.waitText("1 of 2 known");
+  await visitor.click("Quiz · 1");
+  await visitor.waitText("Sign of strangulation?");
+  await visitor.evaluate(`[...document.querySelectorAll('.mc-option')].find((l) => l.innerText.includes('Constant pain')).querySelector('input').click()`);
+  await visitor.click("Check answer");
+  await visitor.waitText("Correct.");
+  await visitor.waitText("Ischaemia causes continuous pain.");
+  await visitor.click("See my score");
+  await visitor.waitText("Perfect score.");
+  await visitor.screenshot("visitor-study-studio");
+});
+await check("MC-S4", "notes and the AI tutor are locked to non-subscribers, even on a free episode (UI and API)", async () => {
+  const path = new URL(await visitor.url()).pathname;
+  tutorEpisodePath = path;
+  await visitor.goto(path);
+  await visitor.click("Notes 🔒");
+  await visitor.waitText("are for Sonara subscribers");
+  assert(!(await visitor.text()).includes("Strangulation is suggested"), "notes text reached a visitor");
+  const episodeId = await visitor.evaluate("document.querySelector('[data-episode-id]')?.getAttribute('data-episode-id')");
+  const anon = await visitor.api(`/api/chronicles/episodes/${episodeId}/tutor`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "quiz" }) });
+  assert(anon.status === 401, `visitor tutor call returned ${anon.status}`);
+  // listener2 never subscribed; the SEC journey reset their password and signed them out.
+  await l2.goto("/auth/login");
+  await l2.fill({ email: email("l2"), password: `${PASSWORD} new` });
+  await l2.click("Sign in");
+  await l2.waitFor("location.pathname !== '/auth/login'");
+  const free = await l2.api(`/api/chronicles/episodes/${episodeId}/tutor`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "quiz" }) });
+  assert(free.status === 403 && free.body.includes("subscription"), `non-subscriber tutor call returned ${free.status} ${free.body}`);
+});
+await check("MC-S5", "a subscriber reads the notes and is quizzed and examined by the AI tutor", async () => {
+  await l1.goto(tutorEpisodePath);
+  await l1.click("Notes");
+  await l1.waitText("Strangulation is suggested");
+  await l1.click("AI tutor");
+  await l1.click("Quiz me · 5 questions");
+  await l1.waitText("[Stub] Commonest cause of adult small-bowel obstruction?");
+  await l1.evaluate(`[...document.querySelectorAll('.mc-option')].find((l) => l.innerText.includes('Adhesions')).querySelector('input').click()`);
+  await l1.click("Check answer");
+  await l1.waitText("Correct.");
+  await l1.click("Viva (written answers)");
+  await l1.click("Ask me a viva question");
+  await l1.waitText("[Stub] Which features suggest strangulation?");
+  await l1.fill({ answer: "Constant pain and tachycardia." });
+  await l1.click("Mark my answer");
+  await l1.waitText("Model answer:");
+  await l1.screenshot("subscriber-ai-tutor");
 });
 await check("MC-7", "an unavailable external source shows an unavailable state", async () => {
   await reviewer.goto(newEpisodePath);

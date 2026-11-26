@@ -31,7 +31,8 @@ No real values belong in this document or in Git.
 | `NEXT_PUBLIC_SUPABASE_URL` | Project API URL | Production yes | Public | Build + runtime; Production, Preview | Supabase Project Settings |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser publishable key | Production yes | Public | Build + runtime; Production, Preview | Supabase API keys |
 | `SUPABASE_SECRET_KEY` | Server auth/admin operations and RLS-bypass service operations | Production yes | Secret | Runtime; Production, Preview | Supabase API keys |
-| `SUPABASE_DB_URL` | Hosted Postgres session-pooler URL | Production yes | Secret | Runtime; Production, Preview | Supabase Database Settings |
+| `SUPABASE_DB_URL` | Hosted Postgres transaction-pooler URL | Production yes | Secret | Runtime; Production, Preview | Supabase Database Settings |
+| `SUPABASE_DB_CA_CERT` | Optional PEM CA certificate used to verify the Postgres server | When required by the endpoint certificate chain | No (server-only) | Runtime; Production, Preview | Supabase Database Settings → SSL Configuration |
 | `SUPABASE_ACCESS_TOKEN` | CLI/migration automation only | Optional; not application runtime | Secret | Local/CI only | Supabase Account Tokens |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Legacy compatibility name | Optional in current web app | Public | Build + runtime | Supabase API keys |
 | `SUPABASE_SERVICE_ROLE_KEY` | Legacy compatibility name | Optional; not the preferred current key | Secret | Runtime; local/other apps only | Supabase API keys |
@@ -122,3 +123,12 @@ FLW_LIVE_APPROVED
 FLW_API_BASE
 SONARA_SUPPORTED_CURRENCIES
 ```
+
+## AI tutor (Groq) — optional, server-only
+
+```text
+GROQ_API_KEY        # Secret. From console.groq.com → API Keys. Enables the subscriber AI tutor and the editors' "Draft quiz from notes".
+GROQ_MODEL          # Optional. Default openai/gpt-oss-120b. Must support Groq JSON object mode.
+```
+
+Never prefix these with `NEXT_PUBLIC_`. `SONARA_GROQ_ENDPOINT` exists only for local acceptance tests and is ignored on Vercel.

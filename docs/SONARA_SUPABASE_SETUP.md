@@ -47,13 +47,15 @@ Do not create tables by hand. The schema comes only from `supabase/migrations`.
 | Project Settings → API → Project URL | `https://<ref>.supabase.co` | `NEXT_PUBLIC_SUPABASE_URL` | public (browser) |
 | Project Settings → API → API keys → **publishable** / anon key | `sb_publishable_…` or the legacy anon JWT | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | public (browser) |
 | Project Settings → API → API keys → **secret** / service_role key | `sb_secret_…` or the legacy service_role JWT | `SUPABASE_SECRET_KEY` | **server-only** |
-| Project Settings → Database → Connection string → **Session pooler** | `postgresql://postgres.<ref>:<password>@aws-…pooler.supabase.com:5432/postgres` | `SUPABASE_DB_URL` | **server-only** |
+| Project Settings → Database → Connection string → **Transaction pooler** | `postgresql://postgres.<ref>:<password>@aws-…pooler.supabase.com:6543/postgres` | `SUPABASE_DB_URL` | **server-only** |
+| Project Settings → Database → SSL Configuration → **Download certificate** | PEM certificate | `SUPABASE_DB_CA_CERT` | server-only configuration |
 
 Notes:
 
-- Use the **session pooler** string (port 5432 on the pooler host), not the direct database host: the direct host
-  is IPv6-only on new projects and many CI/egress networks cannot reach it. The adapter uses `pg` with
-  `ssl: { rejectUnauthorized: true }` for any non-localhost host.
+- Use the **transaction pooler** string (port 6543) for Vercel serverless, not the direct database host: the
+  direct host is IPv6-only on new projects and many CI/egress networks cannot reach it. The adapter uses
+  `pg` with certificate verification enabled. If the endpoint CA is not in the runtime trust store, add the
+  project's PEM certificate as `SUPABASE_DB_CA_CERT`; never disable certificate verification.
 - The publishable key and the secret key must differ. The backend refuses to start if they are equal or if the
   secret looks like a publishable key (`lib/server/backend-config.ts`, unit-tested).
 - Legacy keys still work; new projects issue the new names. The code reads the new names only.
@@ -253,6 +255,7 @@ through Supabase Auth; password hashes are not portable and are not exported.
 |---|---|---|
 | `BackendConfigError: NEXT_PUBLIC_SUPABASE_URL is missing or not a URL` | `.env.local` not loaded (wrong directory) or empty value | Put the file in `apps/web/`, restart `next dev` |
 | `SUPABASE_DB_URL must use https` / `postgres://` errors | The URL is quoted incorrectly or uses `postgres://user:pass@host/db?sslmode=…` with an unescaped password | URL-encode the password; keep the scheme `postgresql://` |
+| `SELF_SIGNED_CERT_IN_CHAIN` | The runtime does not trust the CA presented by the Supabase database endpoint | Download the CA from Database Settings → SSL Configuration and set `SUPABASE_DB_CA_CERT`; keep certificate verification enabled |
 | `password authentication failed` | Wrong password, or the pooler username lacks the `.<ref>` suffix | Copy the session-pooler string verbatim |
 | `permission denied for table …` as a signed-in user | The migration step was skipped (0170 missing) or the user has no role | Re-apply 0170; check `public.platform_roles` |
 | Everything is empty after signing in | RLS is working and the account has no data / no role | Create content as an admin; check `select * from public.profiles where id = auth.uid()` |

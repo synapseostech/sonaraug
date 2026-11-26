@@ -43,3 +43,7 @@ android/
 
 # local development data (dev store, uploaded media, outbox) — never commit
 .data/
+
+# Supabase CLI project-link metadata
+supabase/.temp/
+.vercel/

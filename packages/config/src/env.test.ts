@@ -59,6 +59,8 @@ test("never treats a server-only secret as client-safe", () => {
   assert.ok(SERVER_ONLY_KEYS.includes("SUPABASE_SERVICE_ROLE_KEY"));
   assert.ok(SERVER_ONLY_KEYS.includes("SUPABASE_SECRET_KEY"));
   assert.ok(SERVER_ONLY_KEYS.includes("SUPABASE_DB_URL"));
+  assert.ok(SERVER_ONLY_KEYS.includes("SUPABASE_DB_CA_CERT"));
   assert.ok(SERVER_ONLY_KEYS.includes("SMTP_PASS"));
+  assert.ok(SERVER_ONLY_KEYS.includes("GROQ_API_KEY"));
   assert.ok(!SERVER_ONLY_KEYS.some((k) => k.startsWith("NEXT_PUBLIC_")));
 });

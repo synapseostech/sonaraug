@@ -7,6 +7,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { parseFlashcards, parseQuiz } from "@kito/chronicles";
 import type { PlatformRole } from "@kito/types";
 import { ALL_PLATFORM_ROLES } from "@kito/auth";
 import type { FormState } from "../../components/sonara/forms.tsx";
@@ -21,6 +22,7 @@ import {
   createSeries,
   editorialAction,
   recordMedicalReview,
+  saveStudy,
   setSeriesStatus,
   setSourceStatus,
   updateCategory,
@@ -234,6 +236,29 @@ export async function attachSourceAction(_: FormState, formData: FormData): Prom
     await attachSource(viewer, id, input as Parameters<typeof attachSource>[2], note);
     revalidatePath(`/admin/medical-chronicles/episodes/${id}`);
     return { ok: true, message: "Audio source saved." };
+  });
+}
+
+export async function saveStudyAction(_: FormState, formData: FormData): Promise<FormState> {
+  return guard(formData, async () => {
+    const viewer = await staff();
+    const id = String(formData.get("id") ?? "");
+    const note = String(formData.get("correctionNote") ?? "").trim() || null;
+    // Parsed again on the server: the browser preview is a convenience, not a trust boundary.
+    const cards = parseFlashcards(String(formData.get("flashcards") ?? ""));
+    const quiz = parseQuiz(String(formData.get("quiz") ?? ""));
+    const problems = [...cards.issues.map((i) => `Flashcards: ${i.message}`), ...quiz.issues.map((i) => `Quiz: ${i.message}`)];
+    if (problems.length) throw new CommandError(`Fix these before saving — ${problems.slice(0, 3).join(" · ")}${problems.length > 3 ? ` (and ${problems.length - 3} more)` : ""}`, "flashcards");
+    const notes = String(formData.get("notes") ?? "");
+    const saved = await saveStudy(viewer, id, { flashcards: cards.items, quiz: quiz.items, notes }, note);
+    revalidatePath(`/admin/medical-chronicles/episodes/${id}`);
+    return {
+      ok: true,
+      message:
+        saved.flashcards + saved.quiz + saved.notes === 0
+          ? "Study materials removed."
+          : `Saved ${saved.flashcards} flashcard${saved.flashcards === 1 ? "" : "s"} and ${saved.quiz} quiz question${saved.quiz === 1 ? "" : "s"}${saved.notes ? `, plus ${saved.notes.toLocaleString()} characters of notes` : ""}.`,
+    };
   });
 }
 

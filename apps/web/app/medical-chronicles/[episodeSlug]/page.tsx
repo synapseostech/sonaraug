@@ -4,10 +4,12 @@ import { staffCan } from "@kito/auth";
 import { AI_DISCLAIMER, AI_DISCLOSURE_LABEL } from "@kito/chronicles";
 import { Disclaimer, SourceBadge, TierBadge } from "../../../components/chronicles/bits.tsx";
 import { EpisodePlayer, SaveEpisodeButton } from "../../../components/chronicles/episode-player.tsx";
+import { StudyStudio, StudyTeaser } from "../../../components/chronicles/study-studio.tsx";
 import { Notice, Panel, formatDate } from "../../../components/sonara/ui.tsx";
 import { formatDuration } from "../../../lib/format.ts";
 import { getViewer } from "../../../lib/server/auth.ts";
 import { episodeBySlug, playbackDescriptor } from "../../../lib/server/chronicles.ts";
+import { groqConfigured } from "../../../lib/server/groq.ts";
 
 export async function generateMetadata({ params }: { params: Promise<{ episodeSlug: string }> }) {
   const { episodeSlug } = await params;
@@ -21,7 +23,7 @@ export default async function EpisodePage({ params }: { params: Promise<{ episod
   const viewer = await getViewer();
   const result = await episodeBySlug(episodeSlug, viewer);
   if (!result) notFound();
-  const { view, previous, next, corrections, reviewer, related, saved, preview, category } = result;
+  const { view, study, studySummary, extras, previous, next, corrections, reviewer, related, saved, preview, category } = result;
   const { episode, series } = view;
   const descriptor = playbackDescriptor(view);
   const aiProduced = episode.aiDisclosure === "ai_generated" || episode.aiDisclosure === "ai_assisted";
@@ -82,6 +84,21 @@ export default async function EpisodePage({ params }: { params: Promise<{ episod
           ) : null}
 
           {aiProduced ? <Notice tone="warn" title="AI-generated audio">{AI_DISCLAIMER}</Notice> : null}
+
+          {!withdrawn && view.access.allowed && (study || studySummary?.notes) ? (
+            <StudyStudio
+              episodeId={episode.id}
+              slug={episode.slug}
+              study={study}
+              extras={extras}
+              notesExist={Boolean(studySummary?.notes)}
+              aiAvailable={groqConfigured()}
+              signedIn={Boolean(viewer)}
+            />
+          ) : null}
+          {!withdrawn && !view.access.allowed && studySummary && descriptor.state === "locked" ? (
+            <StudyTeaser flashcards={studySummary.flashcards} questions={studySummary.questions} notes={studySummary.notes} slug={episode.slug} signedIn={Boolean(viewer)} />
+          ) : null}
 
           <Panel title="Editorial record" subtitle="Publishing an episode is not the same as a clinical verification.">
             <ul className="sn-checklist">

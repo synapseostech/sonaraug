@@ -64,14 +64,32 @@ Workflow: draft → in review → (changes requested) → approved → published
 - **Withdrawal / takedown**: reviewer action with a public reason; audio stops immediately.
 - Roles: `content_editor` (draft, edit, submit), `medical_reviewer` (also review, approve, publish, withdraw, record medical review, change access rules), admins (all, plus categories). Every action is audited.
 
-## 6. Adding a NotebookLM episode (operator steps)
+## 6. Publishing a NotebookLM episode with study materials (operator steps)
 
-1. In NotebookLM, generate the Audio Overview and set the notebook's sharing so the intended audience can open it; copy the share link.
-2. `/admin/medical-chronicles/series/new` (or open an existing series) → **Add episode** → title, number, description, references, AI disclosure "AI-generated" → **Create draft episode**.
-3. Audio source → "NotebookLM share link" → paste → **Save audio source** (invalid links are rejected with a reason).
-4. **Submit for review**. A *different* reviewer opens it, optionally records a medical review, **Approve**, then **Publish** (or schedule).
-5. Make sure the series itself is published.
+Updated 2026-11-26. One NotebookLM notebook (e.g. *Intestinal obstruction*) becomes one Sonara episode: its Audio Overview plays in the Sonara player, and its Studio flashcards and quiz become an interactive **Study studio** on the episode page. Listeners never leave Sonara.
+
+1. **In NotebookLM** — generate the Audio Overview, then in the Audio Overview's ⋮ menu choose **Download**. In the Studio panel, generate Flashcards and a Quiz.
+2. **Create the episode** — `/admin/medical-chronicles/series/new` (or open a series) → **Add episode** → title, number, description, references, AI disclosure "AI-generated" → **Create draft episode**.
+3. **Audio source** → **Uploaded audio (recommended)** → choose the downloaded file. On the Supabase backend the file goes straight from the browser to the private `mc-audio` bucket (no size problem on Vercel), then the server checks its real format, size and sha256. → **Save audio source**. A NotebookLM share link is still accepted (`notebooklm.google.com/notebook/…` or `notebooklm.link.google/…`), but listeners then leave Sonara and the link can be passed around the paywall.
+4. **Study materials (NotebookLM Studio)** → paste the flashcards and the quiz. NotebookLM has no API that lets another site read them, so they are copied across as text. Accepted formats:
+   - Flashcards: `Q: … / A: …` blocks, `front<TAB>back` lines, `front :: back`, or JSON `[{"front","back"}]`.
+   - Quiz: numbered questions with `A) … B) …` options and `Answer: B` (or the correct option marked with `*` / `✓`), optional `Explanation: …`; or JSON.
+   - Easiest: open the **Prompt for NotebookLM chat** under each box, copy it into the notebook's chat, and paste the answer back. The preview counts what was recognised and lists anything that needs fixing (a card with no answer, a question with no or two correct answers); saving is blocked until it is clean, and the server parses it again.
+   → **Save study materials**. Like any substantive change, this creates a new version; on a live episode it needs a correction note.
+5. **Submit for review**. A *different* reviewer opens it, optionally records a medical review, **Approve**, then **Publish** (or schedule). Make sure the series itself is published.
+
+What listeners get: free episodes show the Study studio to everyone allowed to listen; on premium episodes, non-subscribers see only "This episode comes with N flashcards and a M-question quiz" with a subscribe button. In Supabase the material lives in `mc_episode_study`, which has **no public read policy**; listeners get it only through `mc_episode_study_for()`, which applies the same access rule as the audio (migration 0200, DB suite 12). Flashcard "known" marks and best quiz scores are kept in the listener's browser only.
+
+### Study notes and the AI tutor (Groq) — subscribers only
+
+- **Notes:** in *Study materials*, load a `.md` file (or paste Markdown) into **Study notes**, then **Save study materials**. Subscribers read them in the episode's **Notes** tab, rendered by Sonara (headings, lists, bold, tables, code; never raw HTML). Max 200,000 characters.
+- **AI tutor:** subscribers get an **AI tutor** tab: *Multiple choice* (5 or 10 fresh questions per click, three levels, instant marking with explanations) and *Viva* (a short-answer question; the learner types an answer and gets correct/partly right/not quite, feedback and a model answer). The tutor is given **only** the episode's notes and is told not to go beyond them.
+- **Draft quiz from notes with Groq** (editors): writes 10 questions from the notes into the quiz box for review. Nothing is saved until you press Save, and the medical review is still yours.
+- **Who gets what:** flashcards and the pasted quiz follow the episode's free/premium rule. Notes and the AI tutor need an **active listener subscription** (or a Medical Chronicles staff role) on every episode, free ones included. Enforced three times: the page, the `/api/chronicles/episodes/[id]/tutor` route, and the database (`mc_episode_study_for()` blanks `notes_md` for non-subscribers; migration 0210, DB suite 12).
+- **Configuration:** `GROQ_API_KEY` (server-only; create it at console.groq.com). Optional `GROQ_MODEL` (default `openai/gpt-oss-120b`; must support Groq's JSON object mode). Without a key the tutor tab and draft button are hidden or disabled; nothing else changes.
+- **Cost and abuse:** each subscriber gets up to 60 tutor calls per hour (`tutor:user` rate limit). Each call sends at most ~60,000 characters of notes.
+- **Privacy:** Groq receives the episode title, the notes and, when marking, the question and the learner's typed answer. Never a name, email, account id or IP address.
 
 ## 7. Not done yet
 
-Cover-image upload; downloads; listener reports of broken links (support email for now); comments; RSS for Medical Chronicles; analytics beyond play starts; production media storage (R2) and signed URLs; Supabase adapter for these tables.
+Cover-image upload; downloads; listener reports of broken links (support email for now); comments; RSS for Medical Chronicles; analytics beyond play starts; server-side quiz results and spaced repetition across devices.

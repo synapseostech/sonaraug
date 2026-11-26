@@ -89,16 +89,15 @@ Status labels follow the feature-status document. Only the conclusions are summa
 ### Misleading labels and status copy
 
 - **Fixed in this audit:**
-  - Home hero badge "Verified live" → "Awaiting authorisation" while no stream is rights-cleared.
+  - Home hero badge "Verified live" → "Rights review pending" while required rights are not cleared.
   - Station header "verified Ugandan broadcaster" → "real Ugandan broadcaster". Platform verification doesn't exist yet.
-  - Station connection panel "Press Listen live to connect" under "Not licensed" → an explanation of why playback is off.
-  - Sidebar "Live radio is real…" → "Radio awaiting authorisation…".
-  - Top pill "Live radio · demo catalogue" → "Demo build · radio not yet licensed".
+  - Station connection panel explains that both retransmission permission and music rights must be cleared.
+  - Sidebar and top pill say "Radio rights review" rather than implying the deployed app is a development build.
   - Home section "Ugandan radio, verified" → "Real Ugandan radio" with an accurate subtitle.
   - Empty player "Start listening" for an unplayable station → "Browse stations".
-  - Radio directory notice now states that playback is off for every real station.
+  - Radio directory notice states that playback requires both station permission and music-rights clearance.
 
-  Every one of these is **conditional on real state** (`verifiedStations`, `featured.audioUrl`), so the copy becomes "Verified live" automatically once a station is authorised.
+  The playback labels are **conditional on real state** (`verifiedStations`, `featured.audioUrl`), so they become "Verified live" automatically once both rights layers are cleared and an endpoint is playable.
 - **Still misleading (Wave 0.5):**
   - Demo stations show "On air · 0:02 listening" with no audio.
   - Podcast and video "playback" runs a clock and **saves fake listening progress** into the library.
@@ -106,7 +105,7 @@ Status labels follow the feature-status document. Only the conclusions are summa
 
 ### Incomplete journeys
 
-1. **Listen to real radio:** dead-ends at "Stream not available" for all real stations. This is legally correct, but it means the core proposition is not demonstrable.
+1. **Listen to real radio:** five technically verified endpoints are still blocked pending music-rights review; Record FM has no verified endpoint. This is an intentional gate, so the core proposition is not yet publicly playable.
 2. **Listen to an episode or watch a video:** the UI behaves as if playing, but there is no media.
 3. **Creator publish:** draft → submit → *switch your own role to Reviewer in the sidebar* → open the admin console → approve. That is four steps and a role change that no real user would make; it exists only because there is no second user.
 4. **Broadcaster onboarding:** a submission and "request check" that don't reach anyone.

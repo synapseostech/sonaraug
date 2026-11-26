@@ -14,12 +14,13 @@
  *    transaction and surfaces as an AccessError or CommandError.
  */
 import { staffCan } from "@kito/auth";
+import { normaliseStudySet } from "@kito/chronicles";
 import type { PlatformRole } from "@kito/types";
 import type { Viewer } from "../auth.ts";
 import { AccessError, CommandError } from "../errors.ts";
 import type { DataShape, OutboxEmail, PlatformSettings, UserRecord } from "../types.ts";
 import { COLLECTIONS, SETTING_KEYS, type CollectionDef, type CollectionName } from "./collections.ts";
-import { pgCode, withAnon, withService, withUser, type Db } from "./db.ts";
+import { optionalQuery, pgCode, withAnon, withService, withUser, type Db } from "./db.ts";
 
 export type Identity = { as: "anon" } | { as: "user"; viewer: Viewer } | { as: "service"; reason: string };
 /**
@@ -115,6 +116,14 @@ async function attachSources(db: Db, identity: Identity, episodes: DataShape["mc
     for (const e of episodes) {
       const r = map.get(e.id);
       e.source = r ? { kind: r.kind, url: r.url ?? null, assetId: r.asset_id ?? null, status: r.status, statusNote: r.status_note ?? "", checkedAt: r.checked_at ? new Date(r.checked_at).toISOString() : null, updatedAt: new Date(r.updated_at).toISOString() } : null;
+    }
+    const study =
+      (await optionalQuery(db, "select episode_id, flashcards, quiz, notes_md from public.mc_episode_study where episode_id = any($1::uuid[])", [ids])) ??
+      (await optionalQuery(db, "select episode_id, flashcards, quiz from public.mc_episode_study where episode_id = any($1::uuid[])", [ids]));
+    const studyMap = new Map((study?.rows ?? []).map((r) => [String(r.episode_id), r]));
+    for (const e of episodes) {
+      const r = studyMap.get(e.id);
+      e.study = r ? normaliseStudySet({ flashcards: r.flashcards, quiz: r.quiz, notes: r.notes_md ?? "" }) : null;
     }
     return;
   }
@@ -324,7 +333,10 @@ export async function persistData(db: Db, identity: Identity, before: DataShape,
       }
     };
     await (def.writer === "system" ? elevate(db, identity, write) : write());
-    if (name === "mcEpisodes") await persistSources(db, before, after);
+    if (name === "mcEpisodes") {
+      await persistSources(db, before, after);
+      await persistStudy(db, before, after);
+    }
     if (name === "subscriptions") await persistSubscriptionPayments(db, identity, before, after);
   }
   await persistOverrides(db, identity, diff(COLLECTIONS.overrides, before.overrides, after.overrides));
@@ -343,6 +355,22 @@ async function persistSources(db: Db, before: DataShape, after: DataShape): Prom
       values ($1,$2,$3,$4,$5,$6,$7,now())
       on conflict (episode_id) do update set kind = excluded.kind, url = excluded.url, asset_id = excluded.asset_id, status = excluded.status,
         status_note = excluded.status_note, checked_at = excluded.checked_at, updated_at = now()`, [e.id, s.kind, s.url, s.assetId, s.status, s.statusNote, s.checkedAt]);
+  }
+}
+
+async function persistStudy(db: Db, before: DataShape, after: DataShape): Promise<void> {
+  if (!after.mcEpisodes.some((e) => e.study) && !before.mcEpisodes.some((e) => e.study)) return;
+  const prev = new Map(before.mcEpisodes.map((e) => [e.id, e.study]));
+  for (const e of after.mcEpisodes) {
+    const old = prev.get(e.id) ?? null;
+    if (stable(old) === stable(e.study)) continue;
+    if (!e.study) {
+      await exec(db, "delete from public.mc_episode_study where episode_id = $1", [e.id]);
+      continue;
+    }
+    await exec(db, `insert into public.mc_episode_study (episode_id, flashcards, quiz, notes_md, updated_at)
+      values ($1, $2::jsonb, $3::jsonb, $4, now())
+      on conflict (episode_id) do update set flashcards = excluded.flashcards, quiz = excluded.quiz, notes_md = excluded.notes_md, updated_at = now()`, [e.id, JSON.stringify(e.study.flashcards), JSON.stringify(e.study.quiz), e.study.notes]);
   }
 }
 

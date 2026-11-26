@@ -8,6 +8,8 @@
 import {
   applyEdit,
   decideEpisodeAccess,
+  hasStudy,
+  normaliseStudySet,
   episodeTier,
   isPubliclyLive,
   parseAudioSource,
@@ -19,6 +21,7 @@ import {
   type EditorialAction,
   type EditorialEpisode,
   type SourceInput,
+  type StudySet,
   type SubstantiveField,
 } from "@kito/chronicles";
 import { staffCan } from "@kito/auth";
@@ -29,7 +32,7 @@ import { requestId } from "./request.ts";
 import { randomId } from "./crypto.ts";
 import { viewerAccess } from "./entitlements.ts";
 import { notify } from "./notify.ts";
-import { asViewer, fillPlayableSource, playCounts, readData, scope, where, writeData, type Load } from "./data.ts";
+import { asViewer, fillPlayableSource, fillStudy, playCounts, readData, scope, where, writeData, type Load } from "./data.ts";
 import type { DataShape, McCategory, McEpisode, McEpisodeSource, McSeries } from "./types.ts";
 
 export type EpisodeView = {
@@ -65,7 +68,8 @@ function viewOf(data: Readonly<DataShape>, episode: McEpisode, series: McSeries,
   });
   const kind = episode.source?.kind ?? null;
   return {
-    episode,
+    // Study material is subscriber content: it never leaves the server unless access is allowed.
+    episode: access.allowed || !episode.study ? episode : { ...episode, study: null },
     series,
     position: index === -1 ? null : index + 1,
     tier: episodeTier(toOrdering(episode), config, all, now, data.settings.defaultFreeEpisodeAllowance),
@@ -138,11 +142,23 @@ export async function episodeBySlug(slug: string, viewer: Viewer | null) {
     }),
   )) as DataShape;
   const episode = data.mcEpisodes.find((e) => e.slug === slug);
-  if (episode) await fillPlayableSource(data, viewer, episode.id);
-  return episodeBySlugFrom(data, slug, viewer);
+  let summary: StudySummary | null = null;
+  if (episode) {
+    await fillPlayableSource(data, viewer, episode.id);
+    summary = await fillStudy(data, viewer, episode.id);
+  }
+  return episodeBySlugFrom(data, slug, viewer, summary);
 }
 
-export function episodeBySlugFrom(data: Readonly<DataShape>, slug: string, viewer: Viewer | null) {
+export type StudySummary = { flashcards: number; questions: number; notes: boolean };
+
+/** Notes and the AI tutor: active listener subscribers and Medical Chronicles staff only, on every episode. */
+export function canUseStudyExtras(data: Readonly<DataShape>, viewer: Viewer | null, now = new Date()): boolean {
+  if (!viewer) return false;
+  return staffCan(viewer.roles, "chronicles:edit") || viewerAccess(data, viewer, now).listenerPremium;
+}
+
+export function episodeBySlugFrom(data: Readonly<DataShape>, slug: string, viewer: Viewer | null, summary: StudySummary | null = null) {
   const now = new Date();
   const episode = data.mcEpisodes.find((e) => e.slug === slug);
   if (!episode) return null;
@@ -160,8 +176,16 @@ export function episodeBySlugFrom(data: Readonly<DataShape>, slug: string, viewe
   const reviewer = episode.lastReviewedBy ? data.users.find((u) => u.id === episode.lastReviewedBy)?.displayName ?? "Sonara reviewer" : null;
   const related = data.mcEpisodes.filter((e) => episode.relatedEpisodeIds.includes(e.id) && isPubliclyLive(e, now));
   const saved = viewer ? data.saved.some((s) => s.userId === viewer.id && s.episodeId === episode.id) : false;
+  const extras = canUseStudyExtras(data, viewer, now);
+  const allowedStudy = view.access.allowed && view.episode.study ? { ...view.episode.study, notes: extras ? view.episode.study.notes : "" } : null;
+  const study = hasStudy(allowedStudy) ? allowedStudy : null;
   return {
     view,
+    study,
+    /** What study material exists (counts only), so a locked episode can say what subscribing unlocks. */
+    studySummary: summary ?? (hasStudy(episode.study) ? { flashcards: episode.study.flashcards.length, questions: episode.study.quiz.length, notes: episode.study.notes.trim().length > 0 } : null),
+    /** Subscriber (or staff): may read the notes and use the AI tutor. */
+    extras,
     previous: index > 0 ? siblings[index - 1] ?? null : null,
     next: index >= 0 && index + 1 < siblings.length ? siblings[index + 1] ?? null : null,
     corrections,
@@ -556,6 +580,7 @@ export async function createEpisode(viewer: Viewer, seriesId: string, input: Epi
       status: "draft",
       version: 1,
       source: null,
+      study: null,
       submittedBy: null,
       submittedAt: null,
       lastEditedBy: viewer.id,
@@ -672,6 +697,48 @@ export async function attachSource(viewer: Viewer, id: string, input: SourceInpu
       episode.source = source;
     }, reqId, "mc.episode.source_attached");
   });
+}
+
+/**
+ * Saves an episode's flashcards and quiz (NotebookLM Studio material). Goes
+ * through the same editorial rules as the audio: a new version, re-review if
+ * it was approved, and a public correction note if the episode is live.
+ */
+export async function saveStudy(viewer: Viewer, id: string, input: StudySet, correctionNote: string | null): Promise<{ flashcards: number; quiz: number; notes: number }> {
+  const reqId = await requestId();
+  const study = normaliseStudySet(input);
+  const next = hasStudy(study) ? study : null;
+  return writeData(scope(asViewer(viewer), editorLoad), (data) => {
+    const episode = data.mcEpisodes.find((e) => e.id === id);
+    if (!episode) throw new CommandError("Episode not found.");
+    const changed = JSON.stringify(episode.study ?? null) !== JSON.stringify(next);
+    commitEdit(data, viewer, episode, changed ? ["study"] : [], correctionNote, () => {
+      episode.study = next;
+    }, reqId, "mc.episode.study_updated");
+    return { flashcards: next?.flashcards.length ?? 0, quiz: next?.quiz.length ?? 0, notes: next?.notes.length ?? 0 };
+  });
+}
+
+/**
+ * The notes the AI tutor may use for an episode, after the same checks as the
+ * episode page: the listener can access the episode AND holds an active
+ * subscription (or is Medical Chronicles staff). In Supabase the database
+ * enforces the subscription rule again (mc_episode_study_for blanks the notes).
+ */
+export async function tutorNotes(viewer: Viewer, episodeId: string): Promise<{ title: string; notes: string }> {
+  if (!/^[A-Za-z0-9_-]{4,64}$/.test(episodeId)) throw new CommandError("Episode not found.");
+  const data = (await readData(scope(asViewer(viewer), catalogueLoad(viewer)))) as DataShape;
+  await fillStudy(data, viewer, episodeId);
+  const now = new Date();
+  const episode = data.mcEpisodes.find((e) => e.id === episodeId);
+  const series = episode ? data.mcSeries.find((s) => s.id === episode.seriesId) : undefined;
+  if (!episode || !series) throw new CommandError("Episode not found.");
+  const view = viewOf(data, episode, series, viewer, now);
+  if (!view.access.allowed) throw new CommandError("You do not have access to this episode.");
+  if (!canUseStudyExtras(data, viewer, now)) throw new CommandError("The AI tutor is part of the Sonara listener subscription.");
+  const notes = view.episode.study?.notes ?? "";
+  if (!notes.trim()) throw new CommandError("This episode has no study notes for the tutor to use yet.");
+  return { title: episode.title, notes };
 }
 
 export async function setSourceStatus(viewer: Viewer, id: string, status: McEpisodeSource["status"], note: string): Promise<void> {

@@ -6,7 +6,14 @@ import { Artwork, Badge, Button, EmptyState, HeartIcon, IconButton, PauseIcon, P
 import { PlayPauseButton, StationStatusBadge, StationTile } from "../../../components/cards.tsx";
 import { CATEGORY_LABELS, LANGUAGE_LABELS, REGION_LABELS } from "../../../lib/data/catalogue.ts";
 import { getStation, relatedStations } from "../../../lib/data/queries.ts";
-import { DISCOVERY_LABEL, RIGHTS_STATUS_LABEL, STREAM_STATUS_LABEL, getStreamRecord, playableEndpoint, stationStreamStatus } from "../../../lib/data/streams.ts";
+import {
+  DISCOVERY_LABEL,
+  MUSIC_RIGHTS_STATUS_LABEL,
+  RIGHTS_STATUS_LABEL,
+  STREAM_STATUS_LABEL,
+  getStreamRecord,
+  stationStreamStatus,
+} from "../../../lib/data/streams.ts";
 import { formatCount } from "../../../lib/format.ts";
 import { useLibrary } from "../../../lib/library.tsx";
 import { stationPlayable } from "../../../lib/playables.ts";
@@ -70,7 +77,7 @@ export default function StationPage() {
   const similar = relatedStations(station, 3);
   const isReal = station.origin === "broadcaster";
   const record = getStreamRecord(station.slug);
-  const endpoint = playableEndpoint(station.slug);
+  const endpoint = record?.endpoints[0] ?? null;
   const status = stationStreamStatus(station.slug);
   const playable = status === "playable" && Boolean(item.audioUrl);
   const active = player.isCurrent(item.key);
@@ -150,9 +157,11 @@ export default function StationPage() {
                     ? connectionSummary(player, playable)
                     : playable
                       ? "Press Listen live to connect."
+                      : status === "rights_pending"
+                        ? "Playback stays off until both station retransmission and music rights are cleared for Sonara."
                       : status === "not_authorised"
-                        ? "Playback stays off until the broadcaster's retransmission authorisation is recorded."
-                        : "Playback is disabled for this station."}
+                        ? "The rights holder has not authorised Sonara to relay this station."
+                        : "No verified stream endpoint is available for this station."}
                 </p>
               </div>
               {playable ? (
@@ -181,8 +190,10 @@ export default function StationPage() {
                   ? `${endpoint.evidence.checkedAt} · ${endpoint.evidence.decodedBytes.toLocaleString()} bytes decoded · ${endpoint.evidence.sustainedSeconds}s sustained`
                   : "—"}
               </dd>
-              <dt>Rights</dt>
+              <dt>Station retransmission</dt>
               <dd>{record ? RIGHTS_STATUS_LABEL[record.rights] : "Not reviewed"}</dd>
+              <dt>Music rights</dt>
+              <dd>{record ? MUSIC_RIGHTS_STATUS_LABEL[record.musicRights] : "Not reviewed"}</dd>
               {station.officialWebsite ? (
                 <>
                   <dt>Official site</dt>

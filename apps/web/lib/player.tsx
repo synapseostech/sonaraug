@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import Hls from "hls.js";
 import { backoffDelayMs, classifyMediaError, describePlaybackError, formatSupport } from "@kito/media";
 import type { PlaybackErrorCode, StreamFormatKind } from "@kito/media";
 import { useLibrary } from "./library.tsx";
@@ -160,13 +161,15 @@ function withCacheBuster(url: string): string {
 function probeFormat(item: Playable): { supported: boolean; note: string | null } {
   if (typeof window === "undefined") return { supported: true, note: null };
   const probe = document.createElement("audio");
-  const support = formatSupport(formatOf(item) as StreamFormatKind, (mime) => probe.canPlayType(mime));
+  const support = formatSupport(formatOf(item) as StreamFormatKind, (mime) => probe.canPlayType(mime), {
+    hlsLibrarySupported: formatOf(item) === "hls" && Hls.isSupported(),
+  });
   if (support.supported) return { supported: true, note: null };
   return {
     supported: false,
     note:
       formatOf(item) === "hls"
-        ? "This station streams HLS, which this browser cannot play natively. Try current Chrome, Edge or Safari."
+        ? "This browser does not support HLS playback."
         : "This browser cannot play the station's audio format.",
   };
 }
@@ -200,6 +203,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   /* Refs mirroring state that DOM event handlers must read synchronously. */
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const hlsFailureHandledRef = useRef(false);
   const currentRef = useRef<Playable | null>(null);
   const statusRef = useRef<PlayerStatus>("idle");
   const attemptRef = useRef(0);
@@ -232,6 +237,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const destroyHls = useCallback(() => {
+    const hls = hlsRef.current;
+    hlsRef.current = null;
+    hls?.destroy();
+  }, []);
+
   /**
    * Stops the audio element and releases the socket. Called before every switch
    * so two stations can never play at once, and so a paused live stream does not
@@ -239,6 +250,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
    */
   const releaseAudio = useCallback(() => {
     clearRetryTimer();
+    destroyHls();
     const el = audioRef.current;
     if (!el) return;
     releasingRef.current = true;
@@ -249,18 +261,51 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setTimeout(() => {
       releasingRef.current = false;
     }, 0);
-  }, [clearRetryTimer]);
+  }, [clearRetryTimer, destroyHls]);
 
   /* Opens (or re-opens) the real stream. */
   const openStream = useCallback(
     (item: Playable, options: { retry?: boolean } = {}) => {
       const el = audioRef.current;
       if (!el || !item.audioUrl) return;
+      destroyHls();
+      hlsFailureHandledRef.current = false;
       clearRetryTimer();
       setErrorMessage(null);
       setStatus("loading");
       // Only a live retry needs a fresh connection; on-demand files resume by Range request.
       const url = options.retry && item.kind === "live" ? withCacheBuster(item.audioUrl) : item.audioUrl;
+      const playElement = () => {
+        const started = el.play();
+        if (started && typeof started.catch === "function") {
+          started.catch((error: DOMException) => {
+            if (error?.name === "AbortError") return;
+            if (error?.name === "NotAllowedError") {
+              setStatus("paused");
+              setErrorMessage("Your browser blocked autoplay. Press play to start the stream.");
+              return;
+            }
+            failRef.current(classifyMediaError(el.error?.code ?? null, { online: navigator.onLine }));
+          });
+        }
+      };
+      if (item.kind === "live" && formatOf(item) === "hls" && !formatSupport("hls", (mime) => el.canPlayType(mime)).supported) {
+        const hls = new Hls();
+        hlsRef.current = hls;
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (hlsRef.current === hls) playElement();
+        });
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (!data.fatal || hlsRef.current !== hls) return;
+          hlsFailureHandledRef.current = true;
+          hlsRef.current = null;
+          hls.destroy();
+          failRef.current(data.type === Hls.ErrorTypes.NETWORK_ERROR ? "network_unreachable" : "decode_failed");
+        });
+        hls.loadSource(url);
+        hls.attachMedia(el);
+        return;
+      }
       try {
         el.src = url;
       } catch {
@@ -268,21 +313,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setErrorMessage(describePlaybackError("unsupported_format").message);
         return;
       }
-      const started = el.play();
-      if (started && typeof started.catch === "function") {
-        started.catch((error: DOMException) => {
-          if (error?.name === "AbortError") return; // superseded by a newer load
-          if (error?.name === "NotAllowedError") {
-            // Browser autoplay policy: the listener must press play.
-            setStatus("paused");
-            setErrorMessage("Your browser blocked autoplay. Press play to start the stream.");
-            return;
-          }
-          failRef.current(classifyMediaError(el.error?.code ?? null, { online: navigator.onLine }));
-        });
-      }
+      playElement();
     },
-    [clearRetryTimer, setStatus],
+    [clearRetryTimer, destroyHls, setStatus],
   );
 
   /* Reconnect with backoff, or give up and offer a manual retry. */
@@ -344,6 +377,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     };
     const onError = () => {
       if (releasingRef.current) return;
+      if (hlsFailureHandledRef.current) return;
       const item = currentRef.current;
       if (isRealOnDemand(item)) {
         // On-demand files do not auto-reconnect; the listener can retry from where they were.

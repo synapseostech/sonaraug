@@ -82,6 +82,31 @@ export async function fillPlayableSource(data: DataShape, viewer: Viewer | null,
   });
 }
 
+/**
+ * Supabase: fills an episode's study material (flashcards, quiz) from
+ * mc_episode_study_for(), which returns a row only if the DATABASE grants this
+ * identity access to the episode. No-op in dev (the store holds it inline).
+ */
+export async function fillStudy(data: DataShape, viewer: Viewer | null, episodeId: string): Promise<{ flashcards: number; questions: number; notes: boolean } | null> {
+  if (!isSupabase()) return null;
+  const episode = data.mcEpisodes.find((e) => e.id === episodeId);
+  if (!episode) return null;
+  const { normaliseStudySet } = await import("@kito/chronicles");
+  const { optionalQuery } = await import("./sb/db.ts");
+  return sbQuery(asViewer(viewer), async (db) => {
+    if (!episode.study) {
+      // The database blanks notes_md unless the caller is a subscriber or an editor.
+      const full = await optionalQuery(db, "select * from public.mc_episode_study_for($1)", [episodeId]);
+      const row = full?.rows[0];
+      if (row) episode.study = normaliseStudySet({ flashcards: row.flashcards, quiz: row.quiz, notes: row.notes_md ?? "" });
+    }
+    // Counts only: lets a locked page say what a subscription unlocks without revealing content.
+    const summary = await optionalQuery(db, "select * from public.mc_episode_study_summary($1)", [episodeId]);
+    const row = summary?.rows[0];
+    return row ? { flashcards: Number(row.flashcards), questions: Number(row.questions), notes: Boolean(row.has_notes) } : null;
+  });
+}
+
 /** Supabase: block or unblock sign-in at the auth provider when an account is suspended or reactivated. */
 export async function applyAuthBan(userId: string, suspended: boolean): Promise<void> {
   if (!isSupabase()) return;

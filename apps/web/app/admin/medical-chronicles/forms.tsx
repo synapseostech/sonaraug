@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { NOTEBOOKLM_FLASHCARD_PROMPT, NOTEBOOKLM_QUIZ_PROMPT, parseFlashcards, parseQuiz } from "@kito/chronicles";
 import type { ReactNode } from "react";
 import { ActionForm, Checkbox, FormActions, SelectField, SubmitButton, TextArea, TextField } from "../../../components/sonara/forms.tsx";
 import {
@@ -10,6 +11,7 @@ import {
   createSeriesAction,
   editorialAction_,
   medicalReviewAction,
+  saveStudyAction,
   seriesStatusAction,
   sourceStatusAction,
   updateCategoryAction,
@@ -197,15 +199,54 @@ export function EpisodeForm({ seriesId, values, published, canReview, siblings }
   );
 }
 
-export function SourceForm({ episodeId, published, current, assets, allowedHosts, uploadsAvailable }: { episodeId: string; published: boolean; current: { kind: string; url: string | null; assetId: string | null } | null; assets: Option[]; allowedHosts: string[]; uploadsAvailable: boolean }) {
-  const [kind, setKind] = useState(current?.kind ?? "notebooklm_link");
+export function SourceForm({ episodeId, published, current, assets, allowedHosts, uploadsAvailable, directUpload = false }: { episodeId: string; published: boolean; current: { kind: string; url: string | null; assetId: string | null } | null; assets: Option[]; allowedHosts: string[]; uploadsAvailable: boolean; directUpload?: boolean }) {
+  const [kind, setKind] = useState(current?.kind ?? (uploadsAvailable ? "uploaded_audio" : "notebooklm_link"));
   const [assetId, setAssetId] = useState(current?.assetId ?? "");
   const [uploadState, setUploadState] = useState<string | null>(null);
   const [uploaded, setUploaded] = useState<Option[]>([]);
 
+  const uploadDirect = async (file: File) => {
+    type Result = { ok: boolean; message?: string; ticket?: { assetId: string; uploadUrl: string; contentType: string }; asset?: { id: string; originalName: string; bytes: number } };
+    const post = async (url: string, payload: unknown): Promise<Result> => {
+      const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      return (await response.json()) as Result;
+    };
+    const started = await post("/api/admin/media/ticket", { name: file.name, size: file.size, type: file.type });
+    if (!started.ok || !started.ticket) return setUploadState(started.message ?? "The upload could not be started.");
+    const { ticket } = started;
+    // Straight to private storage, with progress: large NotebookLM audio never passes through a Sonara function.
+    const sent = await new Promise<boolean>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", ticket.uploadUrl);
+      xhr.setRequestHeader("Content-Type", ticket.contentType);
+      xhr.setRequestHeader("x-upsert", "false");
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) setUploadState(`Uploading ${file.name}… ${Math.round((event.loaded / event.total) * 100)}%`);
+      };
+      xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
+      xhr.onerror = () => resolve(false);
+      xhr.send(file);
+    });
+    if (!sent) return setUploadState("The upload to storage failed. Check your connection and try again.");
+    setUploadState(`Checking ${file.name}…`);
+    const done = await post("/api/admin/media/complete", { assetId: ticket.assetId, name: file.name });
+    if (!done.ok || !done.asset) return setUploadState(done.message ?? "The upload could not be verified.");
+    setUploaded((list) => [...list, { value: done.asset!.id, label: `${done.asset!.originalName} (just uploaded)` }]);
+    setAssetId(done.asset.id);
+    setUploadState(`Uploaded ${done.asset.originalName} (${(done.asset.bytes / 1024 / 1024).toFixed(1)} MB). Press “Save audio source” to attach it.`);
+  };
+
   const upload = async (file: File | undefined) => {
     if (!file) return;
     setUploadState(`Uploading ${file.name}…`);
+    if (directUpload) {
+      try {
+        await uploadDirect(file);
+      } catch {
+        setUploadState("Upload failed. Check your connection.");
+      }
+      return;
+    }
     const body = new FormData();
     body.set("file", file);
     try {
@@ -233,15 +274,15 @@ export function SourceForm({ episodeId, published, current, assets, allowedHosts
           <span>
             <strong>NotebookLM share link</strong>
             <br />
-            <span className="sn-small">Listeners open it on NotebookLM. Sonara does not embed or control it. Make sure the notebook is shared publicly in NotebookLM.</span>
+            <span className="sn-small">Listeners leave Sonara and open it on NotebookLM, which may ask them to sign in to Google. Anyone with the link can share it around the paywall.</span>
           </span>
         </label>
         <label>
           <input type="radio" name="kind" value="uploaded_audio" checked={kind === "uploaded_audio"} onChange={() => setKind("uploaded_audio")} disabled={!uploadsAvailable && allAssets.length === 0} />
           <span>
-            <strong>Uploaded audio</strong>
+            <strong>Uploaded audio (recommended)</strong>
             <br />
-            <span className="sn-small">Plays in the Sonara player with full controls. Recommended for premium episodes: links cannot be shared around the paywall.</span>
+            <span className="sn-small">In NotebookLM, open the Audio Overview’s ⋮ menu → Download, then upload the file here. It plays inside Sonara with full controls, progress and the paywall.</span>
           </span>
         </label>
         <label>
@@ -262,7 +303,7 @@ export function SourceForm({ episodeId, published, current, assets, allowedHosts
               </label>
               <input id="mc-upload" type="file" accept="audio/*" onChange={(event) => void upload(event.target.files?.[0])} className="ws-input" aria-describedby="mc-upload-status" />
               <p className="ws-field__hint" id="mc-upload-status" role="status">
-                {uploadState ?? "MP3, M4A, AAC, OGG, WAV or WebM audio. The file contents are checked."}
+                {uploadState ?? "MP3, M4A, AAC, OGG, WAV or WebM audio, as downloaded from NotebookLM. The file contents are checked."}
               </p>
             </div>
           ) : (
@@ -289,8 +330,8 @@ export function SourceForm({ episodeId, published, current, assets, allowedHosts
           type="url"
           inputMode="url"
           defaultValue={current?.kind === kind ? (current.url ?? "") : ""}
-          placeholder={kind === "notebooklm_link" ? "https://notebooklm.google.com/notebook/…" : "https://…"}
-          hint={kind === "notebooklm_link" ? "Only notebooklm.google.com notebook links are accepted. Sign-in parameters are removed." : "https only; the host must be allow-listed."}
+          placeholder={kind === "notebooklm_link" ? "https://notebooklm.link.google/… or https://notebooklm.google.com/notebook/…" : "https://…"}
+          hint={kind === "notebooklm_link" ? "NotebookLM share links are stored as external sources; Sonara does not fetch or transcribe them." : "https only; the host must be allow-listed."}
         />
       )}
       {published ? <TextArea name="correctionNote" label="Correction note (required for a live episode)" rows={2} /> : null}
@@ -427,5 +468,153 @@ export function CategoryRowForms({ id, name, description, kind, active, first, l
         </ActionForm>
       </details>
     </div>
+  );
+}
+
+function CopyPrompt({ label, prompt }: { label: string; prompt: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <details className="sn-fieldset">
+      <summary className="sn-small">{label}</summary>
+      <pre className="mc-prompt">{prompt}</pre>
+      <button
+        type="button"
+        className="kt-btn kt-btn--ghost kt-btn--sm"
+        onClick={() => {
+          void navigator.clipboard?.writeText(prompt).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          });
+        }}
+      >
+        {copied ? "Copied" : "Copy prompt"}
+      </button>
+    </details>
+  );
+}
+
+/**
+ * Flashcards and quiz for an episode, pasted from the episode's NotebookLM
+ * notebook. Parsed live for a preview; parsed again on the server on save.
+ */
+export function StudyForm({ episodeId, title, published, flashcards, quiz, notes, aiAvailable }: { episodeId: string; title: string; published: boolean; flashcards: string; quiz: string; notes: string; aiAvailable: boolean }) {
+  const [cardText, setCardText] = useState(flashcards);
+  const [quizText, setQuizText] = useState(quiz);
+  const [notesText, setNotesText] = useState(notes);
+  const [notesState, setNotesState] = useState<string | null>(null);
+  const [drafting, setDrafting] = useState<string | null>(null);
+
+  const loadNotes = async (file: File | undefined) => {
+    if (!file) return;
+    if (!/\.(md|markdown|txt)$/i.test(file.name)) return setNotesState("Choose a .md (Markdown) or .txt file.");
+    if (file.size > 400_000) return setNotesState("That file is too large (notes are limited to about 200,000 characters).");
+    const text = await file.text();
+    setNotesText(text);
+    setNotesState(`Loaded ${file.name} (${text.length.toLocaleString()} characters). Press “Save study materials” to keep it.`);
+  };
+
+  const draftQuiz = async () => {
+    setDrafting("Groq is writing questions from your notes…");
+    try {
+      const response = await fetch("/api/admin/chronicles/draft-quiz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, notes: notesText, count: 10 }) });
+      const result = (await response.json()) as { ok: boolean; message?: string; text?: string; count?: number };
+      if (!result.ok || !result.text) return setDrafting(result.message ?? "Drafting failed.");
+      setQuizText((current) => (current.trim() ? `${current.trim()}\n\n${result.text}` : result.text!));
+      setDrafting(`Added ${result.count} drafted question${result.count === 1 ? "" : "s"} to the quiz box. Check every answer before saving — you are the medical reviewer.`);
+    } catch {
+      setDrafting("Drafting failed. Check your connection.");
+    }
+  };
+  const cards = useMemo(() => parseFlashcards(cardText), [cardText]);
+  const questions = useMemo(() => parseQuiz(quizText), [quizText]);
+  const problems = [...cards.issues.map((i) => ({ where: "Flashcards", ...i })), ...questions.issues.map((i) => ({ where: "Quiz", ...i }))];
+  return (
+    <ActionForm action={saveStudyAction} aria-label="Study materials">
+      <input type="hidden" name="id" value={episodeId} />
+      <p className="sn-small" style={{ marginTop: 0 }}>
+        NotebookLM does not let other sites read a notebook, so copy the material across: open the notebook’s <strong>Studio</strong> panel (Flashcards, Quiz) and
+        copy the text, or paste one of the prompts below into the notebook’s chat and copy its answer. Listeners study it inside Sonara, behind the same paywall as
+        the audio.
+      </p>
+      <div className="ws-field">
+        <label className="ws-field__label" htmlFor="mc-notes">
+          Study notes (Markdown) <span className="sn-small">— subscribers only · the AI tutor quizzes from these</span>
+        </label>
+        <input type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" className="ws-input" aria-label="Load notes from a .md file" onChange={(event) => void loadNotes(event.target.files?.[0])} />
+        <textarea
+          id="mc-notes"
+          name="notes"
+          className="ws-input ws-input--area mc-study-input"
+          rows={10}
+          value={notesText}
+          onChange={(event) => setNotesText(event.target.value)}
+          placeholder={"# Intestinal obstruction\n\n## Causes\n- Adhesions (commonest in adults)\n- Hernias\n\n## Clinical features\n- Colicky pain, vomiting, distension, absolute constipation"}
+        />
+        <p className="ws-field__hint" role="status">
+          {notesState ?? `${notesText.length.toLocaleString()} characters. Subscribers read these on the episode page; the AI tutor uses only these notes.`}
+        </p>
+      </div>
+      <div className="ws-form-grid">
+        <div className="ws-field">
+          <label className="ws-field__label" htmlFor="mc-flashcards">
+            Flashcards <span className="sn-small">({cards.items.length} recognised)</span>
+          </label>
+          <textarea
+            id="mc-flashcards"
+            name="flashcards"
+            className="ws-input ws-input--area mc-study-input"
+            rows={14}
+            value={cardText}
+            onChange={(event) => setCardText(event.target.value)}
+            placeholder={"Q: Commonest cause of adult small-bowel obstruction?\nA: Post-operative adhesions.\n\nQ: Coffee-bean sign on X-ray?\nA: Sigmoid volvulus."}
+            spellCheck
+          />
+          <CopyPrompt label="Prompt for NotebookLM chat: flashcards" prompt={NOTEBOOKLM_FLASHCARD_PROMPT} />
+        </div>
+        <div className="ws-field">
+          <label className="ws-field__label" htmlFor="mc-quiz">
+            Quiz <span className="sn-small">({questions.items.length} question{questions.items.length === 1 ? "" : "s"} recognised)</span>
+          </label>
+          <textarea
+            id="mc-quiz"
+            name="quiz"
+            className="ws-input ws-input--area mc-study-input"
+            rows={14}
+            value={quizText}
+            onChange={(event) => setQuizText(event.target.value)}
+            placeholder={"1. Which sign suggests strangulation?\nA) Intermittent colic\nB) Constant pain with tachycardia\nC) Borborygmi\nAnswer: B\nExplanation: Ischaemic bowel causes continuous pain and systemic upset."}
+            spellCheck
+          />
+          <CopyPrompt label="Prompt for NotebookLM chat: quiz" prompt={NOTEBOOKLM_QUIZ_PROMPT} />
+          <button type="button" className="kt-btn kt-btn--secondary kt-btn--sm" onClick={() => void draftQuiz()} disabled={!aiAvailable || notesText.trim().length < 200 || drafting === "Groq is writing questions from your notes…"}>
+            Draft quiz from notes with Groq
+          </button>
+          <p className="ws-field__hint" role="status">
+            {drafting ?? (aiAvailable ? "Writes 10 questions from the notes above into this box for you to review." : "Groq is not configured (GROQ_API_KEY).")}
+          </p>
+        </div>
+      </div>
+      {problems.length ? (
+        <div className="ws-notice ws-notice--warn sn-notice" role="status">
+          <strong>{problems.length} item{problems.length === 1 ? "" : "s"} need attention</strong>
+          <ul className="sn-small">
+            {problems.slice(0, 8).map((p, i) => (
+              <li key={i}>
+                {p.where}
+                {p.line ? `, line ${p.line}` : ""}: {p.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : cards.items.length || questions.items.length ? (
+        <p className="sn-small" role="status">
+          Ready: {cards.items.length} flashcard{cards.items.length === 1 ? "" : "s"} and {questions.items.length} question{questions.items.length === 1 ? "" : "s"}. Clear both boxes and save to remove them.
+        </p>
+      ) : null}
+      {published ? <TextArea name="correctionNote" label="Correction note (required for a live episode)" rows={2} hint="E.g. “Added flashcards and a 10-question quiz.” Shown publicly under Corrections." /> : null}
+      <FormActions>
+        <SubmitButton disabled={problems.length > 0}>Save study materials</SubmitButton>
+      </FormActions>
+    </ActionForm>
   );
 }

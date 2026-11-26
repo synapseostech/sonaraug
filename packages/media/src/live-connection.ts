@@ -65,6 +65,7 @@ export type FormatSupport = {
 export function formatSupport(
   format: StreamFormatKind,
   canPlayType: (mimeType: string) => string,
+  options: { hlsLibrarySupported?: boolean } = {},
 ): FormatSupport {
   const mimeType = MIME_BY_FORMAT[format];
   const raw = canPlayType(mimeType).trim().toLowerCase();
@@ -73,7 +74,13 @@ export function formatSupport(
 
   if (format === "hls") {
     // Native HLS is only ever reported as "maybe" (Chrome/Safari) or "".
-    return { supported: confidence !== "no", confidence, mimeType, needsLibrary: confidence === "no" };
+    const needsLibrary = confidence === "no";
+    return {
+      supported: !needsLibrary || options.hlsLibrarySupported === true,
+      confidence,
+      mimeType,
+      needsLibrary,
+    };
   }
 
   return { supported: confidence !== "no", confidence, mimeType, needsLibrary: false };
